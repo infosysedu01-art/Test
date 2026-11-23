@@ -1,0 +1,21 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Projects') }}{% endblock %}
+{% block content %}
+{% call head(_('Project Master'), 'diagram-3') %}{% endcall %}
+<form method="post" class="card border-0 shadow-sm mb-4"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3 align-items-start">
+ {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+ <div class="col-md-4"><label class="form-label">{{ _('Project Name') }} *</label><input class="form-control" name="name" value="{{ edit.name if edit }}" maxlength="60" required placeholder="Lucknow, Barabanki, Kashi ...">
+  <div class="form-text">{{ _('Company name shown everywhere') }}: <b>Lion Enviro <span id="pv">{{ edit.name if edit else '...' }}</span></b></div></div>
+ <div class="col-md-3"><label class="form-label">{{ _('Employee Code Prefix') }}</label><input class="form-control text-uppercase" name="code_prefix" value="{{ edit.code_prefix if edit }}" maxlength="8" placeholder="LEL"><div class="form-text">{{ _('Example: LEL gives LEL00001') }}</div></div>
+ <div class="col-md-2"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="active"><option value="1">{{ _('Active') }}</option><option value="0" {{ 'selected' if edit and not edit.active }}>{{ _('Disabled') }}</option></select></div>
+ <div class="col-auto pt-md-4 mt-md-1"><button class="btn btn-primary"><i class="bi bi-{{ 'check2' if edit else 'plus-lg' }} me-1"></i>{{ _('Update') if edit else _('Add Project') }}</button>
+ {% if edit %}<a class="btn btn-light border" href="{{ url_for('projects') }}">{{ _('Cancel') }}</a>{% endif %}</div></div></div></form>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Project') }}</th><th>{{ _('Company Name') }}</th><th>{{ _('Code Prefix') }}</th><th>{{ _('Status') }}</th><th>{{ _('Zone') }}</th><th>{{ _('Wards') }}</th><th>{{ _('Employees') }}</th><th>{{ _('Users') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+{% for p in rows %}{% set i = info[p.id] %}<tr><td>{{ loop.index }}</td><td class="fw-semibold">{{ p.name }}</td><td>{{ p.company }}</td><td><span class="badge chip">{{ p.code_prefix }}</span></td>
+ <td><span class="badge text-bg-{{ 'success' if p.active else 'secondary' }}">{{ _('Active') if p.active else _('Disabled') }}</span></td>
+ <td>{{ i.zones }}</td><td>{{ i.wards }}</td><td>{{ i.emps }}</td><td>{{ i.users }} <small class="text-muted">+ {{ admins }} {{ _('admin') }}</small></td>
+ <td class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('projects', edit=p.id) }}"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+  <form method="post" action="{{ url_for('project_delete', id=p.id) }}" class="d-inline" data-confirm="{{ _('Delete this project?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button></form></td></tr>
+{% else %}<tr><td colspan="10" class="text-center text-muted py-4">{{ _('No records found.') }}</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="alert alert-info mt-3 small"><i class="bi bi-info-circle me-1"></i>{{ _('Every project keeps its own zones, wards, employees, vehicles, routes, trackers, holidays and attendance. Give users access to a project from Users & Access.') }}</div>
+<script>const nm=document.querySelector('input[name=name]');nm.addEventListener('input',()=>{document.getElementById('pv').textContent=nm.value.trim()||'...';});</script>
+{% endblock %}

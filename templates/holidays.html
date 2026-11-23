@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Holidays') }}{% endblock %}
+{% block content %}
+{% call head(_('Holiday Master'), 'stars') %}
+ <form method="get" class="d-flex gap-2 align-items-center"><label class="form-label m-0">{{ _('Year') }}</label><input type="number" class="form-control form-control-sm" style="width:100px" name="year" value="{{ year }}" min="2000" max="2100"><button class="btn btn-sm btn-primary">{{ _('Show') }}</button></form>
+{% endcall %}
+{% if (edit and current_user.can('holidays','edit')) or (not edit and current_user.can('holidays','add')) %}
+<form method="post" class="card border-0 shadow-sm mb-3"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3 align-items-end">
+ {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+ <div class="col-md-3"><label class="form-label">{{ _('Date') }} *</label><input type="date" class="form-control" name="hdate" value="{{ edit.hdate if edit }}" required></div>
+ <div class="col-md-5"><label class="form-label">{{ _('Holiday Name') }} *</label><input class="form-control" name="name" value="{{ edit.name if edit }}" required placeholder="Diwali, Holi, Republic Day..."></div>
+ <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-{{ 'check2' if edit else 'plus-lg' }} me-1"></i>{{ _('Update') if edit else _('Add Holiday') }}</button>
+ {% if edit %}<a class="btn btn-light border" href="{{ url_for('holidays', year=edit.hdate.year) }}">{{ _('Cancel') }}</a>{% endif %}</div></div></div></form>{% endif %}
+<p class="text-muted small"><i class="bi bi-info-circle me-1"></i>{{ _('Sundays are highlighted automatically. Add other holidays here so they are highlighted in the calendar and attendance sheet.') }}</p>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Date') }}</th><th>{{ _('Day') }}</th><th>{{ _('Holiday Name') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+{% for h in rows %}<tr><td>{{ loop.index }}</td><td>{{ h.hdate.strftime('%d-%m-%Y') }}</td><td>{{ dow(h.hdate) }}</td><td><span class="badge chip hchip fs-6 fw-semibold">&#9733; {{ h.name }}</span></td><td class="text-nowrap">
+ {% if current_user.can('holidays','edit') %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('holidays', edit=h.id, year=year) }}"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>{% endif %}
+ {% if current_user.can('holidays','delete') %}<form method="post" action="{{ url_for('holiday_delete', id=h.id) }}" class="d-inline" data-confirm="{{ _('Delete this holiday?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button></form>{% endif %}
+</td></tr>{% else %}<tr><td colspan="5" class="text-center text-muted py-4">{{ _('No records found.') }}</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}

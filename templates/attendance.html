@@ -1,0 +1,168 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Attendance Sheet') }}{% endblock %}
+{% block content %}
+{% call head(_('Attendance Sheet'), 'calendar2-check') %}{% endcall %}
+<form class="card border-0 shadow-sm mb-3 noprint" method="get" id="filter"><div class="card-body"><div class="row g-3 align-items-end">
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Month') }}</label><input type="month" class="form-control" name="month" value="{{ month }}"></div>
+ <div class="col-12 col-md-4"><label class="form-label">{{ _('Ward') }}</label><select class="form-select" name="ward_id" required><option value="">{{ _('-- Select Ward --') }}</option>
+  {% for w in wards %}<option value="{{ w.id }}" {{ 'selected' if ward_id==w.id }}>{{ w.zone.name }} - {{ w.name }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Shift') }}</label><select class="form-select" name="shift">{% for s in shifts %}<option value="{{ s }}" {{ 'selected' if shift==s }}>{{ _(s) }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Work Type') }}</label><select class="form-select" name="work_type">{% for w in works %}<option value="{{ w }}" {{ 'selected' if wt==w }}>{{ _(w) }}</option>{% endfor %}</select></div>
+ <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-table me-1"></i>{{ _('Open Sheet') }}</button></div></div></div></form>
+{% if not wards or not works or not shifts %}
+<div class="alert alert-danger noprint">{{ _('No ward / work type / shift has been assigned to you. Please contact the Super Admin.') }}</div>
+{% elif not loaded %}
+<div class="alert alert-info noprint"><i class="bi bi-info-circle me-2"></i>{{ _('Select Month, Ward, Shift and Work Type above, then click Open Sheet.') }}</div>
+{% else %}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3 noprint">
+ <button class="btn btn-success" id="saveBtn" type="button"><i class="bi bi-save me-1"></i>{{ _('Save') }} (Ctrl+S)</button>
+ <span id="dirty"></span>
+ <button class="btn btn-sm btn-outline-primary" type="button" id="sunBtn"><i class="bi bi-sun me-1"></i>{{ _('Mark Sundays as Weekly Off') }}</button>
+ <button class="btn btn-sm btn-outline-secondary" type="button" onclick="window.print()"><i class="bi bi-printer me-1"></i>{{ _('Print') }}</button>
+ {% if can_export %}<a class="btn btn-sm btn-warning" href="{{ url_for('attendance_export', month=month, ward_id=ward_id, shift=shift, work_type=wt) }}"><i class="bi bi-file-earmark-excel me-1"></i>{{ _('Download Excel') }}</a>{% endif %}
+ {% set pm = (y-1 if m==1 else y)|string + '-' + ('%02d' % (12 if m==1 else m-1)) %}
+ {% set nm = (y+1 if m==12 else y)|string + '-' + ('%02d' % (1 if m==12 else m+1)) %}
+ <div class="ms-auto btn-group btn-group-sm"><a class="btn btn-outline-primary" href="{{ url_for('attendance', month=pm, ward_id=ward_id, shift=shift, work_type=wt) }}"><i class="bi bi-chevron-left"></i> {{ _('Previous Month') }}</a>
+ <a class="btn btn-outline-primary" href="{{ url_for('attendance', month=nm, ward_id=ward_id, shift=shift, work_type=wt) }}">{{ _('Next Month') }} <i class="bi bi-chevron-right"></i></a></div>
+</div>
+<p class="legend small noprint"><b>{{ _('Keys') }}:</b>
+ <span class="lg st-P">P {{ _('Present') }}</span><span class="lg st-A">A {{ _('Absent') }}</span><span class="lg st-L">L {{ _('Leave') }}</span><span class="lg st-H">H {{ _('Half Day') }}</span><span class="lg st-W">W {{ _('Weekly Off') }}</span><span class="lg lsun">{{ _('Sunday') }}</span><span class="lg lhol">{{ _('Holiday') }}</span>
+ <span class="text-muted ms-1">{{ _('Select a cell and type P / A / L / H / W. Delete clears it, arrow keys move, Ctrl+C / Ctrl+V copies and pastes. Click a day number to mark everyone Present for that day.') }}</span></p>
+<div class="row g-2 align-items-center mb-2 noprint">
+ <div class="col-12 col-md-6 col-xl-5"><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+  <input type="search" id="empSearch" class="form-control" autocomplete="off" placeholder="{{ _('Search employee by name, code, father name, designation, vehicle or route...') }}">
+  <button class="btn btn-outline-secondary" type="button" id="searchClear" title="{{ _('Clear') }}"><i class="bi bi-x-lg"></i></button></div></div>
+ <div class="col-auto small"><span id="searchInfo" class="text-muted"></span> <span class="text-muted d-none d-md-inline">&middot; {{ _('Press / to search') }}</span></div>
+</div>
+<div class="sheetwrap shadow-sm"><table id="grid"></table></div>
+<div class="card border-0 shadow-sm mt-3 noprint" style="border-top:3px solid #f7941d!important" id="detail"><div class="card-body"><div class="row g-3 align-items-end">
+  <div class="col-md-3"><label class="form-label">{{ _('Selected') }}</label><div class="fw-bold text-primary" id="dName">-</div></div>
+  <div class="col-6 col-md-2"><label class="form-label">{{ _('Status') }}</label><select class="form-select form-select-sm" id="dStatus" disabled><option value="">--</option>{% for k,v in {'P':'Present','A':'Absent','L':'Leave','H':'Half Day','W':'Weekly Off'}.items() %}<option value="{{ k }}">{{ k }} - {{ _(v) }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Location / Place of work') }}</label><input class="form-control form-control-sm" id="dLoc" disabled></div>
+  <div class="col-6 col-md-2"><label class="form-label">{{ _('In Time') }}</label><input type="time" class="form-control form-control-sm" id="dTime" disabled></div>
+  <div class="col-md-2"><label class="form-label">{{ _('Remark') }}</label><input class="form-control form-control-sm" id="dRem" disabled></div>
+  <div class="col-12"><button class="btn btn-sm btn-outline-success" type="button" id="rowP"><i class="bi bi-check2-all me-1"></i>{{ _('Mark this employee Present for the month') }}</button></div>
+ </div></div></div>
+<div class="apptoast" id="toast"></div>
+<script>
+const EMPS={{ emps|tojson }}, DATA={{ data|tojson }}, DAYS={{ days|tojson }}, FLAGS={{ flags|tojson }};
+const Y={{ y }}, MO={{ m }}, WT={{ wt|tojson }}, TODAY="{{ today.isoformat() }}", LOCK="{{ lock }}";
+const SAVE_URL="{{ url_for('attendance_save') }}", PAYLOAD={ward_id:{{ ward_id }},shift:{{ shift|tojson }},work_type:WT,month:"{{ month }}"};
+const T={{ js_t|tojson }}, t=(k,n)=>(T[k]||k).replace('{n}',n);
+const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const EMP_URL="{{ url_for('employees') }}", CAN_VIEW={{ can_view_emp|tojson }};
+const CODE={P:'Present',A:'Absent',L:'Leave',H:'Half Day',W:'Weekly Off'};
+const REV=Object.fromEntries(Object.entries(CODE).map(([k,v])=>[v,k]));
+let base=JSON.parse(JSON.stringify(DATA)), sel={r:0,c:0}, clip=null;
+const vis=EMPS.map(()=>true);
+let initial=true;
+const filtering=()=>document.getElementById('empSearch').value.trim()!=='';
+const vrow=(r,dir)=>{let i=r+dir;while(i>=0&&i<EMPS.length){if(vis[i])return i;i+=dir;}return r;};
+const firstVis=()=>vis.findIndex(v=>v);
+const grid=document.getElementById('grid');
+let CELL=[],ROW=[],THD={},FT={},curRow=null,curTh=null;      // element lookup tables (built once)
+const iso=d=>`${Y}-${String(MO).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+const rec=(e,d)=>(DATA[e]||{})[d];
+function editable(e,d){const r=rec(e,d),dt=iso(d);
+ if(dt>TODAY||(LOCK&&dt<LOCK)) return false;
+ if(r&&r.wt&&r.wt!==WT) return false;
+ return r?FLAGS.edit:FLAGS.add;}
+function toast(m,bad){const t=document.getElementById('toast');t.textContent=m;t.className='apptoast show'+(bad?' bad':'');setTimeout(()=>t.className='apptoast',2200);}
+function build(){
+ let h=`<thead><tr><th class="c1 fix">#</th><th class="c2 fix">${t('Code')}</th><th class="c3 fix">${t('Employee')}</th><th class="fix wcol">${t("Father's Name")}</th><th class="fix wcol">${t('Designation')}</th>`;
+ DAYS.forEach(d=>h+=`<th class="${d.sun?'sun':''}${d.hol?' holh':''}" data-d="${d.d}" title="${d.hol?esc(d.hol):t('Click: mark everyone Present for this day')}">${d.d}<br><small>${d.wd}</small></th>`);
+ h+=`<th class="fix">P</th><th class="fix">A</th><th class="fix">L</th><th class="fix">H</th><th class="fix">W</th><th class="fix">${t('Days')}</th></tr></thead><tbody>`;
+ EMPS.forEach((e,r)=>{const nm=CAN_VIEW?`<a href="${EMP_URL}/${e.id}" target="_blank" title="${t('View Employee')}">${esc(e.name)}</a>`:esc(e.name);
+  h+=`<tr data-r="${r}"><td class="c1">${r+1}</td><td class="c2">${esc(e.code)}</td><td class="c3">${nm}</td><td class="wcol">${esc(e.father)}</td><td class="wcol">${esc(e.desig)}${e.veh?` <span class="vbadge">${esc(e.veh)}</span>`:''}${e.route?` <span class="rbadge">${esc(e.route)}</span>`:''}</td>`;
+  DAYS.forEach((d,c)=>h+=`<td class="cell" data-r="${r}" data-c="${c}"></td>`);
+  h+='<td class="tot t-P"></td><td class="tot t-A"></td><td class="tot t-L"></td><td class="tot t-H"></td><td class="tot t-W"></td><td class="tot t-D"></td></tr>';});
+ h+=`</tbody><tfoot><tr><td class="c1"></td><td class="c2"></td><td class="c3">${t('Present per day')}</td><td></td><td></td>`;
+ DAYS.forEach(d=>h+=`<td class="f" data-d="${d.d}"></td>`);h+='<td colspan="6"></td></tr></tfoot>';
+ grid.innerHTML=h;
+ CELL=[];ROW=[];THD={};FT={};curRow=curTh=null;
+ grid.querySelectorAll('tbody tr').forEach(tr=>{ROW[+tr.dataset.r]=tr;CELL[+tr.dataset.r]=[];});
+ grid.querySelectorAll('td.cell').forEach(td=>{CELL[+td.dataset.r][+td.dataset.c]=td;});
+ grid.querySelectorAll('thead th[data-d]').forEach(th=>{THD[th.dataset.d]=th;});
+ grid.querySelectorAll('tfoot td.f').forEach(td=>{FT[td.dataset.d]=td;});
+ EMPS.forEach((e,r)=>DAYS.forEach((d,c)=>paint(r,c)));EMPS.forEach((e,r)=>totals(r));DAYS.forEach(d=>foot(d.d));
+ if(!EMPS.length) grid.insertAdjacentHTML('afterend','<p>'+t('No active employees found for this ward / work type / shift. Add them in Employees first.')+'</p>');
+  applyFilter();}
+function paint(r,c){const e=EMPS[r].id,d=DAYS[c],td=CELL[r]&&CELL[r][c];if(!td)return;
+ const x=rec(e,d.d),code=x?REV[x.s]||'':'';
+ let cls='cell'+(d.sun?' sunc':'')+(d.hol?' holc':'')+(code?' s-'+code:'')+(editable(e,d.d)?'':' lock')+(sel.r===r&&sel.c===c?' sel':'');
+ td.className=cls;td.innerHTML=code+((x&&(x.loc||x.time||x.rem))?'<i></i>':'');}
+function totals(r){const e=EMPS[r].id,n={P:0,A:0,L:0,H:0,W:0};
+ DAYS.forEach(d=>{const x=rec(e,d.d);if(x&&REV[x.s])n[REV[x.s]]++;});
+ const row=ROW[r];
+ ['P','A','L','H','W'].forEach(k=>row.querySelector('.t-'+k).textContent=n[k]||'');
+ row.querySelector('.t-D').textContent=n.P+n.H*0.5||'';}
+function foot(d){let n=0;EMPS.forEach(e=>{const x=rec(e.id,d);if(x&&x.s==='Present')n++;});
+ if(FT[d])FT[d].textContent=n||'';}
+function changed(){return JSON.stringify(DATA)!==JSON.stringify(base);}
+function dirty(){document.getElementById('dirty').innerHTML=changed()?'<span class="dirty">&#9679; '+t('Unsaved changes')+'</span>':'';}
+function setCell(r,c,code,quiet){const e=EMPS[r].id,d=DAYS[c].d,x=rec(e,d);
+ if(!editable(e,d)){if(!quiet)toast(t('This cell cannot be edited (future date / past limit / permission).'),true);return false;}
+ if(code===''){if(!x)return false;if(!FLAGS.delete){if(!quiet)toast(t('You do not have delete permission.'),true);return false;}delete DATA[e][d];}
+ else{DATA[e]=DATA[e]||{};const y=DATA[e][d]||{loc:'',time:'',rem:'',wt:WT};y.s=CODE[code];DATA[e][d]=y;}
+ paint(r,c);totals(r);foot(d);dirty();return true;}
+function select(r,c){const o=sel;sel={r:Math.max(0,Math.min(EMPS.length-1,r)),c:Math.max(0,Math.min(DAYS.length-1,c))};
+ if(!EMPS.length)return;paint(o.r,o.c);paint(sel.r,sel.c);
+ if(curRow)curRow.classList.remove('rsel');curRow=ROW[sel.r]||null;if(curRow)curRow.classList.add('rsel');
+ if(curTh)curTh.classList.remove('csel');curTh=THD[DAYS[sel.c].d]||null;if(curTh)curTh.classList.add('csel');
+ const td=CELL[sel.r]&&CELL[sel.r][sel.c];if(td&&!initial)td.scrollIntoView({block:'nearest',inline:'nearest'});detail();}
+function detail(){const e=EMPS[sel.r],d=DAYS[sel.c],x=rec(e.id,d.d),ok=!!x&&editable(e.id,d.d);
+ document.getElementById('dName').textContent=`${e.name} [${e.code}]${e.father?' · '+t("Father's Name")+': '+e.father:''}${e.desig?' · '+e.desig:''}${e.veh?' · '+e.veh:''}${e.route?' · '+e.route:''} — ${d.d}/${MO}/${Y}`;
+ const st=document.getElementById('dStatus');st.value=x?REV[x.s]||'':'';st.disabled=!editable(e.id,d.d)&&!ok;
+ ['dLoc','dTime','dRem'].forEach(id=>document.getElementById(id).disabled=!ok);
+ document.getElementById('dLoc').value=x?x.loc:'';document.getElementById('dTime').value=x?x.time:'';document.getElementById('dRem').value=x?x.rem:'';}
+grid.addEventListener('click',ev=>{const td=ev.target.closest('td.cell'),th=ev.target.closest('thead th[data-d]');
+ if(td)select(+td.dataset.r,+td.dataset.c);
+ if(th){const c=+th.dataset.d-1;let n=0;EMPS.forEach((e,r)=>{if(vis[r]&&!rec(e.id,DAYS[c].d)&&setCell(r,c,'P',true))n++;});toast(t('Marked {n} employee(s) Present.',n)+(filtering()?' ('+t('search results only')+')':''));detail();}});
+document.addEventListener('keydown',ev=>{
+ const tg=ev.target.tagName;if(['INPUT','SELECT','TEXTAREA'].includes(tg))return;
+ if((tg==='BUTTON'||tg==='A')&&!((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='s'))return;   // keep Enter / Tab working on buttons and links
+ const k=ev.key,K=k.toLowerCase();
+ if((ev.ctrlKey||ev.metaKey)&&K==='s'){ev.preventDefault();save();return;}
+ if((ev.ctrlKey||ev.metaKey)&&K==='c'){const x=rec(EMPS[sel.r].id,DAYS[sel.c].d);clip=x?JSON.parse(JSON.stringify(x)):null;toast(t('Copied'));return;}
+ if((ev.ctrlKey||ev.metaKey)&&K==='v'){if(clip&&setCell(sel.r,sel.c,REV[clip.s])){const x=rec(EMPS[sel.r].id,DAYS[sel.c].d);x.loc=clip.loc;x.time=clip.time;x.rem=clip.rem;paint(sel.r,sel.c);detail();}return;}
+ if(ev.ctrlKey||ev.altKey||ev.metaKey)return;
+ const mv={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1],Enter:[1,0],Tab:[0,1]}[k];
+ if(mv){ev.preventDefault();const nr=mv[0]?vrow(sel.r,mv[0]):sel.r;select(nr,sel.c+mv[1]);return;}
+ if(k==='/'){ev.preventDefault();const si=document.getElementById('empSearch');si.focus();si.select();return;}
+ if('palhw'.includes(K)&&K.length===1){ev.preventDefault();setCell(sel.r,sel.c,K.toUpperCase());detail();select(sel.r,sel.c+1);return;}
+ if(k==='Delete'||k==='Backspace'){ev.preventDefault();setCell(sel.r,sel.c,'');detail();}});
+document.getElementById('dStatus').addEventListener('change',ev=>{setCell(sel.r,sel.c,ev.target.value);detail();});
+[['dLoc','loc'],['dTime','time'],['dRem','rem']].forEach(([id,f])=>document.getElementById(id).addEventListener('input',ev=>{
+ const x=rec(EMPS[sel.r].id,DAYS[sel.c].d);if(x){x[f]=ev.target.value;paint(sel.r,sel.c);dirty();}}));
+document.getElementById('rowP').addEventListener('click',()=>{let n=0;DAYS.forEach((d,c)=>{if(!rec(EMPS[sel.r].id,d.d)&&!d.sun&&setCell(sel.r,c,'P',true))n++;});toast(t('Marked {n} day(s) Present (Sundays skipped).',n));detail();});
+document.getElementById('sunBtn').addEventListener('click',()=>{let n=0;EMPS.forEach((e,r)=>DAYS.forEach((d,c)=>{if(vis[r]&&d.sun&&!rec(e.id,d.d)&&setCell(r,c,'W',true))n++;}));toast(t('Marked {n} Sunday(s) as Weekly Off.',n)+(filtering()?' ('+t('search results only')+')':''));detail();});
+async function save(){
+ const ch=[];EMPS.forEach(e=>DAYS.forEach(d=>{const a=JSON.stringify(rec(e.id,d.d)||null),b=JSON.stringify((base[e.id]||{})[d.d]||null);
+  if(a!==b){const x=rec(e.id,d.d);ch.push({emp:e.id,day:d.d,s:x?x.s:'',loc:x?x.loc:'',time:x?x.time:'',rem:x?x.rem:''});}}));
+ if(!ch.length){toast(t('No changes to save.'));return;}
+ if(window.AppLoader)AppLoader.show(t('Saving...'),30000);
+ try{const r=await fetch(SAVE_URL,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':document.querySelector('meta[name=csrf-token]').content},body:JSON.stringify({...PAYLOAD,changes:ch})});
+  const j=await r.json();if(!r.ok){toast(j.error||t('Could not save'),true);return;}
+  base=JSON.parse(JSON.stringify(DATA));dirty();
+  toast(t('Saved')+': '+j.saved+(j.skipped?' | '+t('Skipped (permission / date)')+': '+j.skipped:''),!!j.skipped&&!j.saved);
+  if(j.skipped)setTimeout(()=>location.reload(),1600);
+ }catch(e){toast(t('Could not connect to the server'),true);}finally{if(window.AppLoader)AppLoader.hide();}}
+function applyFilter(){
+ const q=document.getElementById('empSearch').value.trim().toLowerCase(),parts=q?q.split(/\s+/):[];let n=0;
+ EMPS.forEach((e,r)=>{const hay=(e.name+' '+e.code+' '+e.father+' '+e.desig+' '+(e.veh||'')+' '+(e.route||'')).toLowerCase();
+  const ok=parts.every(p=>hay.includes(p));vis[r]=ok;if(ok)n++;
+  const tr=ROW[r];if(tr){tr.style.display=ok?'':'none';tr.classList.toggle('hit',!!q&&ok);}});
+ const info=document.getElementById('searchInfo');
+ info.textContent=!EMPS.length?'':(!n?t('No employee matches your search.'):(q?t('Showing {n} of {m} employees',n).replace('{m}',EMPS.length):''));
+ info.className=(q&&!n)?'text-danger fw-semibold':'text-muted';
+ if(EMPS.length&&n&&!vis[sel.r])select(firstVis(),sel.c);else if(EMPS.length)select(sel.r,sel.c);}
+const si=document.getElementById('empSearch');
+si.addEventListener('input',applyFilter);
+si.addEventListener('keydown',ev=>{
+ if(ev.key==='Enter'||ev.key==='ArrowDown'){ev.preventDefault();if(firstVis()>=0){const d=DAYS.findIndex(x=>iso(x.d)===TODAY);select(firstVis(),d>=0?d:sel.c);si.blur();}}
+ else if(ev.key==='Escape'){si.value='';applyFilter();si.blur();}});
+document.getElementById('searchClear').addEventListener('click',()=>{si.value='';applyFilter();si.focus();});
+document.getElementById('saveBtn').addEventListener('click',save);
+window.addEventListener('beforeunload',e=>{if(changed()){e.preventDefault();e.returnValue='';}});
+build();initial=false;
+</script>
+{% endif %}{% endblock %}

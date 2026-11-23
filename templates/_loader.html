@@ -1,0 +1,13 @@
+{# Loader: a thin progress bar for every page change + a glass card that appears only if something takes longer than a moment #}
+<div id="topBar" aria-hidden="true"><i></i></div>
+<div id="appLoader" role="status" aria-live="polite" aria-hidden="true"
+     data-m-load="{{ _('Loading...') }}" data-m-save="{{ _('Saving...') }}" data-m-delete="{{ _('Deleting...') }}" data-m-download="{{ _('Preparing your download...') }}">
+ <div class="al-panel">
+  <div class="al-ring">
+   <svg class="al-svg" viewBox="0 0 100 100" aria-hidden="true"><circle class="al-track" cx="50" cy="50" r="44"/><circle class="al-arc" cx="50" cy="50" r="44"/></svg>
+   <img class="al-logo" src="{{ url_for('static', v=APP_VERSION, filename='logo.png') }}" alt="" width="54" height="54" decoding="async">
+  </div>
+  <div class="al-text" id="alText">{{ _('Loading...') }}</div>
+  <div class="al-bar" aria-hidden="true"><i></i></div>
+ </div>
+</div>

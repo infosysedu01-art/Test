@@ -1,0 +1,78 @@
+{% extends 'base.html' %}{% from '_macros.html' import head, stat %}{% block title %}{{ _('Employee Details') }}{% endblock %}
+{% block content %}
+{% call head(_('Employee Details'), 'person-vcard') %}
+ <a class="btn btn-light border" href="{{ url_for('employees') }}"><i class="bi bi-arrow-left me-1"></i>{{ _('Back to Employees') }}</a>
+ {% if current_user.can('employees','edit') %}<a class="btn btn-warning" href="{{ url_for('employee_edit', id=e.id) }}"><i class="bi bi-pencil me-1"></i>{{ _('Edit') }}</a>{% endif %}
+ <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>{{ _('Print') }}</button>
+{% endcall %}
+<div class="card border-0 shadow-sm mb-4"><div class="card-body"><div class="d-flex align-items-center gap-3 mb-3"><span class="avatar" style="width:54px;height:54px;font-size:1.4rem">{{ e.name[:1]|upper }}</span>
+ <div><div class="h5 fw-bold text-primary m-0">{{ e.name }}</div><div class="text-muted">{{ e.designation or '' }} &middot; {{ e.code }}</div></div>
+ <span class="badge ms-auto text-bg-{{ 'success' if e.active else 'secondary' }}">{{ _('Active') if e.active else _('Inactive') }}</span></div>
+ <div class="kv">
+ <div><span>{{ _('Employee Code') }}</span><b>{{ e.code }}</b></div>
+ <div><span>{{ _("Father's Name") }}</span><b>{{ e.father_name or '-' }}</b></div>
+ <div><span>{{ _('Designation') }}</span><b>{{ e.designation or '-' }}</b></div>
+ <div><span>{{ _('Vehicle Number') }}</span><b>{% if e.vehicle %}{% if current_user.can('vehicles','view') %}<a class="text-decoration-none" href="{{ url_for('vehicle_view', id=e.vehicle.id) }}"><span class="vbadge">{{ e.vehicle.vehicle_no }}</span></a>{% else %}<span class="vbadge">{{ e.vehicle.vehicle_no }}</span>{% endif %}{% else %}-{% endif %}</b></div>
+ <div><span>{{ _('Route ID') }}</span><b>{% if e.route %}{% if current_user.can('routes','view') %}<a class="text-decoration-none" href="{{ url_for('route_view', id=e.route.id) }}"><span class="rbadge">{{ e.route.route_no }}</span></a>{% else %}<span class="rbadge">{{ e.route.route_no }}</span>{% endif %}{% else %}-{% endif %}</b></div>
+ <div><span>{{ _('Mobile') }}</span><b>{{ e.mobile or '-' }}</b></div>
+ <div><span>{{ _('Zone') }}</span><b>{{ e.zone.name }}</b></div>
+ <div><span>{{ _('Ward') }}</span><b>{{ e.ward.name }}</b></div>
+ <div><span>{{ _('Default Shift') }}</span><b>{{ _(e.default_shift) }}</b></div>
+ <div><span>{{ _('Default Work') }}</span><b>{{ _(e.default_work) }}</b></div>
+ <div><span>{{ _('Joining Date') }}</span><b>{{ e.joining_date.strftime('%d-%m-%Y') if e.joining_date else '-' }}</b></div>
+</div></div></div>
+
+{% if can_att %}
+<div class="page-head"><h2 class="page-title fs-4"><i class="bi bi-calendar3 me-2 text-warning"></i>{{ _('Attendance') }} - {{ month_name }}</h2>
+ <form class="d-flex gap-2 flex-wrap noprint" method="get">
+  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('employee_view', id=e.id, month=pm) }}"><i class="bi bi-chevron-left"></i> {{ _('Previous Month') }}</a>
+  <input type="month" class="form-control form-control-sm" style="width:160px" name="month" value="{{ month }}" onchange="this.form.submit()">
+  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('employee_view', id=e.id, month=nm) }}">{{ _('Next Month') }} <i class="bi bi-chevron-right"></i></a>
+  {% if can_export %}<a class="btn btn-sm btn-success" href="{{ url_for('employee_export', id=e.id, month=month) }}"><i class="bi bi-file-earmark-excel me-1"></i>{{ _('Download Excel') }}</a>{% endif %}
+ </form></div>
+<div class="row g-3 mb-4">
+ {{ stat('person-check','success',counts['Present'],_('Present')) }}
+ {{ stat('person-x','danger',counts['Absent'],_('Absent')) }}
+ {{ stat('person-dash','secondary',counts['Leave'],_('Leave')) }}
+ {{ stat('hourglass-split','warning',counts['Half Day'],_('Half Day')) }}
+ {{ stat('moon','primary',counts['Weekly Off'],_('Weekly Off')) }}
+ {{ stat('briefcase','success',days_worked|num,_('Days Worked')) }}
+ {{ stat('sun','warning',dstats.sundays,_('Sundays')) }}
+ {{ stat('stars','purple',dstats.holidays,_('Holidays')) }}
+ {{ stat('calendar-check','primary',dstats.working,_('Working Days')) }}
+</div>
+
+<h2 class="h5 fw-bold text-primary mb-2">{{ _('Calendar View') }}</h2>
+<p class="legend small"><span class="lg st-P">P {{ _('Present') }}</span><span class="lg st-A">A {{ _('Absent') }}</span><span class="lg st-L">L {{ _('Leave') }}</span><span class="lg st-H">H {{ _('Half Day') }}</span><span class="lg st-W">W {{ _('Weekly Off') }}</span>
+ <span class="lg lsun">{{ _('Sunday') }}</span><span class="lg lhol">{{ _('Holiday') }}</span><span class="lg lnm">{{ _('Not Marked') }}</span></p>
+<div class="shadow-sm rounded-3 overflow-hidden mb-3"><table class="cal"><tr>{% for l in wd_labels %}<th class="{{ 'sunh' if loop.last }}">{{ l }}</th>{% endfor %}</tr>
+{% for week in weeks %}<tr>{% for c in week %}
+ {% if not c %}<td class="pad"></td>{% else %}
+ <td class="d{{ ' sun' if c.sun }}{{ ' hol' if c.hol }}{{ ' today' if c.today }}{{ ' future' if c.future }}{{ ' st-'+c.recs[0].code if c.recs else '' }}{{ ' nm' if c.not_marked }}" data-iso="{{ c.iso }}">
+  <div class="dn">{{ c.num }}{% if c.sun %}<em>{{ _('Sunday') }}</em>{% endif %}</div>
+  {% if c.hol %}<div class="htag" title="{{ c.hol }}">&#9733; {{ c.hol }}</div>{% endif %}
+  {% for r in c.recs %}<div class="rc st-{{ r.code }}"><b>{{ r.code }}</b> <small>{{ r.shift }}{% if r.work %} &middot; {{ r.work }}{% endif %}</small>{% if r.loc %}<small class="loc">{{ r.loc }}</small>{% endif %}</div>
+  {% endfor %}
+  {% if c.not_marked %}<div class="nmt">{{ _('Not Marked') }}</div>{% endif %}
+ </td>{% endif %}{% endfor %}</tr>{% endfor %}</table></div>
+<div class="card border-0 shadow-sm mb-4 noprint" style="border-top:3px solid #f7941d!important"><div class="card-body" id="calDetail"><span class="text-muted"><i class="bi bi-hand-index me-1"></i>{{ _('Click a date to see its details.') }}</span></div></div>
+
+<h2 class="h5 fw-bold text-primary mb-2">{{ _('Details') }}</h2>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover table-sm align-middle mb-0"><thead><tr><th>{{ _('Date') }}</th><th>{{ _('Day') }}</th><th>{{ _('Day Type') }}</th><th>{{ _('Shift') }}</th><th>{{ _('Status') }}</th><th>{{ _('Work Type') }}</th><th>{{ _('Location') }}</th><th>{{ _('In Time') }}</th><th>{{ _('Remark') }}</th></tr></thead><tbody>
+{% for r in recs %}<tr><td>{{ r.att_date.strftime('%d-%m-%Y') }}</td><td>{{ dow(r.att_date) }}</td>
+ <td>{% if hmap.get(r.att_date.day) %}<span class="badge chip hchip">{{ _('Holiday') }}: {{ hmap[r.att_date.day] }}</span>{% elif r.att_date.weekday()==6 %}<span class="badge chip schip">{{ _('Sunday') }}</span>{% endif %}</td>
+ <td>{{ _(r.shift) }}</td><td><span class="tag {{ r.status.split()[0] }}">{{ _(r.status) }}</span></td><td>{{ _(r.work_type) if r.work_type else '' }}</td><td>{{ r.location or '' }}</td><td>{{ r.in_time or '' }}</td><td>{{ r.remark or '' }}</td></tr>
+{% else %}<tr><td colspan="9" class="text-center text-muted py-4">{{ _('No attendance records for this month.') }}</td></tr>{% endfor %}</tbody></table></div></div>
+<script>
+const INFO={{ info|tojson }}, L={{ {'Holiday':_('Holiday'),'Sunday':_('Sunday'),'Not Marked':_('Not Marked'),'Shift':_('Shift'),'Work Type':_('Work Type'),'Location':_('Location'),'In Time':_('In Time'),'Remark':_('Remark'),'No attendance records for this month.':_('No attendance records for this month.')}|tojson }};
+const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.querySelectorAll('.cal td.d').forEach(td=>td.addEventListener('click',()=>{
+ document.querySelectorAll('.cal td.sel').forEach(x=>x.classList.remove('sel'));td.classList.add('sel');
+ const i=INFO[td.dataset.iso];let h=`<b>${esc(i.date)} (${esc(i.day)})</b>`;
+ if(i.hol)h+=` <span class="chip hchip">${esc(L['Holiday'])}: ${esc(i.hol)}</span>`;
+ if(i.sun)h+=` <span class="chip schip">${esc(L['Sunday'])}</span>`;
+ if(i.nm)h+=` <span class="chip">${esc(L['Not Marked'])}</span>`;
+ i.recs.forEach(r=>{h+=`<div class="drec"><span class="tag ${r.code==='H'?'Half':r.code==='W'?'Weekly':r.status.split(' ')[0]}">${esc(r.status)}</span> ${esc(L['Shift'])}: <b>${esc(r.shift)}</b> &middot; ${esc(L['Work Type'])}: <b>${esc(r.work)}</b>${r.loc?' &middot; '+esc(L['Location'])+': <b>'+esc(r.loc)+'</b>':''}${r.time?' &middot; '+esc(L['In Time'])+': <b>'+esc(r.time)+'</b>':''}${r.rem?' &middot; '+esc(L['Remark'])+': '+esc(r.rem):''}</div>`;});
+ document.getElementById('calDetail').innerHTML=h;}));
+</script>
+{% endif %}{% endblock %}

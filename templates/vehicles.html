@@ -1,0 +1,29 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Vehicles') }}{% endblock %}
+{% block content %}
+{% call head(_('Vehicle Master'), 'truck') %}{% if current_user.can('vehicles','add') %}<a class="btn btn-success" href="{{ url_for('vehicle_add') }}"><i class="bi bi-plus-lg me-1"></i>{{ _('Add Vehicle') }}</a>{% endif %}{% endcall %}
+<form class="card border-0 shadow-sm mb-3" method="get"><div class="card-body"><div class="row g-3 align-items-end">
+ <div class="col-md-4"><label class="form-label">{{ _('Search') }}</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-search"></i></span><input class="form-control" name="q" value="{{ s }}" placeholder="{{ _('Vehicle number, type or driver / helper name') }}"></div></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Zone') }}</label><select class="form-select" name="zone_id"><option value="">{{ _('All') }}</option>{% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if zone_id==z.id }}>{{ z.name }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-3"><label class="form-label">{{ _('Ward') }}</label><select class="form-select" name="ward_id"><option value="">{{ _('All') }}</option>{% for w in wards %}<option value="{{ w.id }}" {{ 'selected' if ward_id==w.id }}>{{ w.zone.name }} - {{ w.name }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="status"><option value="">{{ _('All') }}</option><option value="active" {{ 'selected' if status=='active' }}>{{ _('Active') }}</option><option value="inactive" {{ 'selected' if status=='inactive' }}>{{ _('Inactive') }}</option></select></div>
+ <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>{{ _('Search') }}</button></div></div></div></form>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Vehicle Number') }}</th><th>{{ _('Vehicle Type') }}</th><th>{{ _('Zone') }}</th><th>{{ _('Ward') }}</th><th>{{ _('Driver') }}</th><th>{{ _('Helper') }}</th><th>{{ _('Status') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+{% for v in rows %}{% set c = crew[v.id] %}<tr><td>{{ pg.first + loop.index0 }}</td>
+ <td><a class="text-decoration-none" href="{{ url_for('vehicle_view', id=v.id) }}"><span class="vbadge fs-6">{{ v.vehicle_no }}</span></a></td>
+ <td>{{ v.vehicle_type or '' }}</td><td>{{ v.zone.name }}</td><td>{{ v.ward.name if v.ward else '-' }}</td>
+ <td>{% for e in c.driver %}<span class="chip">{{ e.name }}</span> {% else %}<span class="badge text-bg-danger-subtle text-danger border border-danger-subtle">{{ _('No driver') }}</span>{% endfor %}</td>
+ <td>{% for e in c.helper %}<span class="chip">{{ e.name }}</span> {% else %}<span class="badge text-bg-warning-subtle text-warning-emphasis border">{{ _('No helper') }}</span>{% endfor %}</td>
+ <td><span class="badge text-bg-{{ 'success' if v.active else 'secondary' }}">{{ _('Active') if v.active else _('Inactive') }}</span></td>
+ <td class="text-nowrap"><a class="btn btn-sm btn-outline-success" href="{{ url_for('vehicle_view', id=v.id) }}"><i class="bi bi-eye"></i> {{ _('View') }}</a>
+ {% if current_user.can('vehicles','edit') %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('vehicle_edit', id=v.id) }}"><i class="bi bi-pencil"></i></a>{% endif %}
+ {% if current_user.can('vehicles','delete') %}<form method="post" action="{{ url_for('vehicle_delete', id=v.id) }}" class="d-inline" data-confirm="{{ _('Delete this vehicle?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>{% endif %}
+</td></tr>{% else %}<tr><td colspan="9" class="text-center text-muted py-4">{{ _('No vehicles found.') }}</td></tr>{% endfor %}</tbody></table></div>
+ <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-top noprint">
+  <div class="small text-muted">{{ _('Showing {a} to {b} of {n} vehicles')|replace('{a}', pg.first)|replace('{b}', pg.last)|replace('{n}', pg.total) }}</div>
+  {% if pg.pages > 1 %}<nav><ul class="pagination pagination-sm mb-0">
+   <li class="page-item {{ 'disabled' if pg.page==1 }}"><a class="page-link" href="{{ url_for('vehicles', page=pg.page-1, **qs) }}"><i class="bi bi-chevron-left"></i> {{ _('Previous') }}</a></li>
+   {% for p in pg.window %}{% if p is none %}<li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+   {% else %}<li class="page-item {{ 'active' if p==pg.page }}"><a class="page-link" href="{{ url_for('vehicles', page=p, **qs) }}">{{ p }}</a></li>{% endif %}{% endfor %}
+   <li class="page-item {{ 'disabled' if pg.page==pg.pages }}"><a class="page-link" href="{{ url_for('vehicles', page=pg.page+1, **qs) }}">{{ _('Next') }} <i class="bi bi-chevron-right"></i></a></li>
+  </ul></nav>{% endif %}</div></div>
+{% endblock %}

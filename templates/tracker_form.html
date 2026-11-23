@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Tracker') }}{% endblock %}
+{% block content %}
+{% call head(_('Edit Tracker') if t else _('Add Tracker'), 'broadcast') %}{% endcall %}
+<form method="post" class="card border-0 shadow-sm"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3">
+ <div class="col-md-4"><label class="form-label">{{ _('Tracker ID') }} *</label><input class="form-control text-uppercase" name="tracker_no" value="{{ t.tracker_no if t }}" required maxlength="30" autocomplete="off"><div class="form-text">{{ _('Letters, numbers, space or hyphen.') }}</div></div>
+ <div class="col-md-4"><label class="form-label">{{ _('Zone') }} *</label><select class="form-select" name="zone_id" required><option value="">{{ _('-- Select Zone --') }}</option>{% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if t and t.zone_id==z.id }}>{{ z.name }}</option>{% endfor %}</select></div>
+ <div class="col-md-4"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="active"><option value="1">{{ _('Active') }}</option><option value="0" {{ 'selected' if t and not t.active }}>{{ _('Inactive') }}</option></select></div>
+</div>
+<div class="mt-4 d-flex gap-2"><button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>{{ _('Save') }}</button><a class="btn btn-light border" href="{{ url_for('trackers') }}">{{ _('Cancel') }}</a></div></div></form>
+{% endblock %}

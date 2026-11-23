@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Ward') }}{% endblock %}
+{% block content %}
+{% call head(_('Ward Master'), 'geo-alt') %}{% endcall %}
+{% if (edit and current_user.can('wards','edit')) or (not edit and current_user.can('wards','add')) %}
+<form method="post" class="card border-0 shadow-sm mb-4"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3 align-items-end">
+ {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+ <div class="col-md-4"><label class="form-label">{{ _('Zone') }}</label><select class="form-select" name="zone_id" required><option value="">{{ _('-- Select Zone --') }}</option>
+ {% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if edit and edit.zone_id==z.id }}>{{ z.name }}</option>{% endfor %}</select></div>
+ <div class="col-md-4"><label class="form-label">{{ _('Ward Name / No.') }}</label><input class="form-control" name="name" value="{{ edit.name if edit }}" required></div>
+ <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-{{ 'check2' if edit else 'plus-lg' }} me-1"></i>{{ _('Update') if edit else _('Add Ward') }}</button>
+ {% if edit %}<a class="btn btn-light border" href="{{ url_for('wards') }}">{{ _('Cancel') }}</a>{% endif %}</div></div></div></form>{% endif %}
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Zone') }}</th><th>{{ _('Ward') }}</th><th>{{ _('Employees') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+{% for w in wards %}<tr><td>{{ loop.index }}</td><td>{{ w.zone.name }}</td><td class="fw-semibold">{{ w.name }}</td><td><span class="badge bg-white text-dark border">{{ counts.get(w.id, 0) }}</span></td><td class="text-nowrap">
+ {% if current_user.can('wards','edit') %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('wards', edit=w.id) }}"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>{% endif %}
+ {% if current_user.can('wards','delete') %}<form method="post" action="{{ url_for('ward_delete', id=w.id) }}" class="d-inline" data-confirm="{{ _('Delete this ward?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button></form>{% endif %}
+</td></tr>{% else %}<tr><td colspan="5" class="text-center text-muted py-4">{{ _('No records found.') }}</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}

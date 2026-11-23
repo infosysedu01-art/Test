@@ -1,0 +1,29 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Reports') }}{% endblock %}
+{% block content %}
+{% call head(_('Attendance Report'), 'file-earmark-text') %}{% endcall %}
+<form class="card border-0 shadow-sm mb-3 noprint" method="get"><div class="card-body"><div class="row g-3 align-items-end">
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('From') }}</label><input type="date" class="form-control" name="from" value="{{ d1 }}"></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('To') }}</label><input type="date" class="form-control" name="to" value="{{ d2 }}"></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Zone') }}</label><select class="form-select" name="zone_id"><option value="">{{ _('All') }}</option>{% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if a.get('zone_id')==z.id|string }}>{{ z.name }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-3"><label class="form-label">{{ _('Ward') }}</label><select class="form-select" name="ward_id"><option value="">{{ _('All') }}</option>{% for w in wards %}<option value="{{ w.id }}" {{ 'selected' if a.get('ward_id')==w.id|string }}>{{ w.zone.name }} - {{ w.name }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-1"><label class="form-label">{{ _('Shift') }}</label><select class="form-select" name="shift"><option value="">{{ _('All') }}</option>{% for s in shifts %}<option value="{{ s }}" {{ 'selected' if a.get('shift')==s }}>{{ _(s) }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Work Type') }}</label><select class="form-select" name="work_type"><option value="">{{ _('All') }}</option>{% for s in works %}<option value="{{ s }}" {{ 'selected' if a.get('work_type')==s }}>{{ _(s) }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="status"><option value="">{{ _('All') }}</option>{% for s in STATUSES %}<option value="{{ s }}" {{ 'selected' if a.get('status')==s }}>{{ _(s) }}</option>{% endfor %}</select></div>
+ <div class="col-auto d-flex gap-2"><button class="btn btn-primary"><i class="bi bi-search me-1"></i>{{ _('Show') }}</button>
+ {% if current_user.can('reports','export') %}<button class="btn btn-success" name="download" value="1"><i class="bi bi-file-earmark-excel me-1"></i>{{ _('Download Excel') }}</button>{% endif %}</div>
+</div></div></form>
+<div class="d-flex flex-wrap gap-2 mb-3">{% for k,v in summary.items() %}<span class="badge bg-white text-dark border fs-6 fw-normal">{{ _(k) }}: <b>{{ v }}</b></span>{% endfor %}<span class="badge text-bg-primary fs-6 fw-normal">{{ _('Total') }}: <b>{{ pg.total }}</b></span></div>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover table-sm align-middle mb-0"><thead><tr><th>{{ _('Date') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _("Father's Name") }}</th><th>{{ _('Designation') }}</th><th>{{ _('Zone') }}</th><th>{{ _('Ward') }}</th><th>{{ _('Shift') }}</th><th>{{ _('Status') }}</th><th>{{ _('Work Type') }}</th><th>{{ _('Location') }}</th><th>{{ _('In Time') }}</th><th>{{ _('Remark') }}</th></tr></thead><tbody>
+{% for r in rows %}<tr><td>{{ r.att_date.strftime('%d-%m-%Y') }}</td><td>{{ r.employee.code }}</td><td>{{ r.employee.name }}</td><td>{{ r.employee.father_name or '' }}</td><td>{{ desig_text(r.employee) }}</td><td>{{ r.employee.zone.name }}</td><td>{{ r.ward.name }}</td><td>{{ _(r.shift) }}</td><td><span class="tag {{ r.status.split()[0] }}">{{ _(r.status) }}</span></td><td>{{ _(r.work_type) if r.work_type else '' }}</td><td>{{ r.location or '' }}</td><td>{{ r.in_time or '' }}</td><td>{{ r.remark or '' }}</td></tr>
+{% else %}<tr><td colspan="13" class="text-center text-muted py-4">{{ _('No records found for this filter.') }}</td></tr>{% endfor %}</tbody></table></div>
+ <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-top noprint">
+  <div class="small text-muted">{{ _('Showing {a} to {b} of {n} records')|replace('{a}', pg.first)|replace('{b}', pg.last)|replace('{n}', pg.total) }}</div>
+  {% if pg.pages > 1 %}<nav><ul class="pagination pagination-sm mb-0">
+   <li class="page-item {{ 'disabled' if pg.page==1 }}"><a class="page-link" href="{{ url_for('reports', page=1, **qs) }}"><i class="bi bi-chevron-double-left"></i></a></li>
+   <li class="page-item {{ 'disabled' if pg.page==1 }}"><a class="page-link" href="{{ url_for('reports', page=pg.page-1, **qs) }}"><i class="bi bi-chevron-left"></i> {{ _('Previous') }}</a></li>
+   {% for p in pg.window %}{% if p is none %}<li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+   {% else %}<li class="page-item {{ 'active' if p==pg.page }}"><a class="page-link" href="{{ url_for('reports', page=p, **qs) }}">{{ p }}</a></li>{% endif %}{% endfor %}
+   <li class="page-item {{ 'disabled' if pg.page==pg.pages }}"><a class="page-link" href="{{ url_for('reports', page=pg.page+1, **qs) }}">{{ _('Next') }} <i class="bi bi-chevron-right"></i></a></li>
+   <li class="page-item {{ 'disabled' if pg.page==pg.pages }}"><a class="page-link" href="{{ url_for('reports', page=pg.pages, **qs) }}"><i class="bi bi-chevron-double-right"></i></a></li>
+  </ul></nav>{% endif %}
+ </div></div>{% endblock %}

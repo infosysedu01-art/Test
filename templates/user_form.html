@@ -1,0 +1,65 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('User') }}{% endblock %}
+{% macro scope(kind, title, allflag) %}
+<div class="border rounded-3 p-3 mb-3 bg-white"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h3 class="h6 fw-bold text-primary m-0">{{ title }}</h3>
+ <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" name="all_{{ kind }}" value="1" id="all_{{ kind }}" {{ 'checked' if (not u) or allflag }}><label class="form-check-label fw-semibold" for="all_{{ kind }}">{{ _('Allow all') }}</label></div></div>
+ <div id="list_{{ kind }}">{{ caller() }}</div></div>
+{% endmacro %}
+{% block content %}
+{% call head(_('Edit User') if u else _('Create User'), 'person-gear') %}{% endcall %}
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+<div class="card border-0 shadow-sm mb-4"><div class="card-body"><div class="row g-3">
+  <div class="col-md-3"><label class="form-label">{{ _('Username') }} *</label><input class="form-control" name="username" value="{{ u.username if u }}" {{ 'readonly' if u else 'required' }}></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Full Name') }} *</label><input class="form-control" name="full_name" value="{{ u.full_name if u }}" required></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Password') }} {{ ('(' ~ _('leave blank to keep the same') ~ ')') if u else '*' }}</label><input type="password" class="form-control" name="password" {{ '' if u else 'required' }}></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Role') }}</label><select class="form-select" name="role"><option value="user">{{ _('User') }}</option><option value="super_admin" {{ 'selected' if u and u.is_super }}>{{ _('Super Admin') }}</option></select></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="active"><option value="1">{{ _('Active') }}</option><option value="0" {{ 'selected' if u and not u.is_active_user }}>{{ _('Disabled') }}</option></select></div>
+  <div class="col-md-9 d-flex align-items-end">
+  {% if not u %}<div class="form-check"><input class="form-check-input" type="checkbox" name="must_change" value="1" id="mc" checked><label class="form-check-label" for="mc">{{ _('Ask the user to change the password at next login') }}</label></div>
+  {% else %}<a class="btn btn-outline-warning" href="{{ url_for('user_reset_password', id=u.id) }}"><i class="bi bi-key me-1"></i>{{ _('Reset Password') }}</a>{% endif %}</div>
+ </div>
+ <div class="form-text mt-2">{{ _('Super Admin has full access to everything. For a normal user, choose the access below.') }}</div></div></div>
+
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+ <h2 class="h5 fw-bold text-primary mb-1"><i class="bi bi-diagram-3 me-1"></i>{{ _('Project Access') }}</h2>
+ <div class="form-text mb-3">{{ _('The user can log in to, and work on, only the projects ticked here. A Super Admin can open every project.') }}</div>
+ <div id="projBox">{% for p in projects %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="project" value="{{ p.id }}" id="pr{{ p.id }}" {{ 'checked' if p.id in my_pids or (not u and projects|length==1) }}><label class="form-check-label fw-semibold" for="pr{{ p.id }}">{{ p.company }}</label></div>
+ {% else %}<i class="text-muted">{{ _('Add a project first.') }}</i>{% endfor %}</div></div></div>
+
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+ <h2 class="h5 fw-bold text-primary mb-3">1. {{ _('Page / Action Access') }}</h2>
+ <div class="mb-3 noprint"><span class="fw-semibold me-2">{{ _('Quick Preset') }}:</span>
+  <div class="btn-group btn-group-sm flex-wrap"><button type="button" class="btn btn-outline-primary" onclick="preset('full')">{{ _('Full Access') }}</button>
+  <button type="button" class="btn btn-outline-warning" onclick="preset('entry')">{{ _('Attendance Entry Only') }}</button>
+  <button type="button" class="btn btn-outline-success" onclick="preset('view')">{{ _('View + Download Only') }}</button>
+  <button type="button" class="btn btn-outline-danger" onclick="preset('none')">{{ _('Clear All') }}</button></div></div>
+ <div class="table-responsive"><table class="table table-bordered table-hover align-middle text-center mb-0" id="permTable"><thead ><tr><th class="text-start">{{ _('Module') }}</th>{% for a in ACTIONS %}<th>{{ _('Export / Download') if a=='export' else _(a|capitalize) }}</th>{% endfor %}</tr></thead><tbody>
+ {% for m,label in MODULES %}<tr><td class="text-start fw-semibold">{{ _(label) }}</td>{% for a in ACTIONS %}<td>{% if a!='export' or m in EXPORT_MODULES %}<input class="form-check-input" type="checkbox" name="perm_{{ m }}_{{ a }}" {{ 'checked' if u and u.can(m,a) and not u.is_super }}>{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div></div>
+
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+ <h2 class="h5 fw-bold text-primary mb-3">2. {{ _('Data Access (what the user can work on)') }}</h2>
+ {% call scope('works', _('Work Type (Door to Door / Sweeping / Commercial)'), u.all_works if u else True) %}
+  {% for w in WORK_TYPES %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="work" value="{{ w }}" id="w{{ loop.index }}" {{ 'checked' if w in sel.works }}><label class="form-check-label" for="w{{ loop.index }}">{{ _(w) }}</label></div>{% endfor %}
+ {% endcall %}
+ {% call scope('shifts', _('Shift'), u.all_shifts if u else True) %}
+  {% for s in SHIFTS %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="shift" value="{{ s }}" id="s{{ loop.index }}" {{ 'checked' if s in sel.shifts }}><label class="form-check-label" for="s{{ loop.index }}">{{ _(s) }}</label></div>{% endfor %}
+ {% endcall %}
+ {% call scope('zones', _('Zone Access (the user will see only these zones and their wards)'), u.all_zones if u else True) %}
+  {% for z in zones %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="zone" value="{{ z.id }}" id="z{{ z.id }}" {{ 'checked' if z.id|string in sel.zones }}><label class="form-check-label" for="z{{ z.id }}">{% if projects|length>1 %}{{ z.project.name }} &ndash; {% endif %}{{ z.name }}</label></div>{% else %}<i class="text-muted">{{ _('Add zones in the Zone master first.') }}</i>{% endfor %}
+ {% endcall %}
+ {% call scope('wards', _('Ward (narrows the access further inside the allowed zones)'), u.all_wards if u else True) %}
+  {% for z in zones %}<div class="mb-2 ps-2 border-start border-3 border-warning"><div class="small fw-bold text-muted">{% if projects|length>1 %}{{ z.project.name }} &ndash; {% endif %}{{ z.name }}</div>{% for w in z.wards %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="ward" value="{{ w.id }}" id="wd{{ w.id }}" {{ 'checked' if w.id|string in sel.wards }}><label class="form-check-label" for="wd{{ w.id }}">{{ w.name }}</label></div>{% endfor %}</div>{% else %}<i class="text-muted">{{ _('Add wards in the Ward master first.') }}</i>{% endfor %}
+ {% endcall %}
+ <div class="border rounded-3 p-3 bg-white"><h3 class="h6 fw-bold text-primary">{{ _('Back-date edit limit') }}</h3>
+  <div class="d-flex align-items-center gap-2 flex-wrap"><input type="number" min="0" class="form-control" style="width:150px" name="backdate_days" value="{{ u.backdate_days if u and u.backdate_days is not none }}" placeholder="{{ _('blank = no limit') }}"><span>{{ _('days') }}</span></div>
+  <div class="form-text">{{ _('For example, 2 means the user can change attendance of today and the previous 2 days only. Nobody can mark future dates.') }}</div></div>
+</div></div>
+<div class="d-flex gap-2 mb-4"><button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>{{ _('Save') }}</button><a class="btn btn-light border" href="{{ url_for('users') }}">{{ _('Cancel') }}</a></div>
+</form>
+<script>
+for(const k of ['works','shifts','zones','wards']){const all=document.getElementById('all_'+k),box=document.getElementById('list_'+k);
+ const f=()=>box.querySelectorAll('input').forEach(i=>{i.disabled=all.checked;});all.addEventListener('change',f);f();}
+function preset(t){document.querySelectorAll('#permTable input[type=checkbox]').forEach(c=>{const m=c.name.split('_');const mod=m[1],act=m[2];
+ let v=false;if(t==='full')v=true;
+ if(t==='entry')v=(mod==='attendance'&&['view','add','edit'].includes(act));
+ if(t==='view')v=(['attendance','reports'].includes(mod)&&['view','export'].includes(act));c.checked=v;});}
+</script>{% endblock %}

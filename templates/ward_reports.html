@@ -1,0 +1,82 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Ward Reports') }}{% endblock %}
+{% block content %}
+<style media="print">
+@page{size:A4 landscape;margin:9mm}
+.rep-sheet{page-break-after:always}.rep-sheet:last-child{page-break-after:auto}
+.rg th,.rg td{font-size:9px!important}
+</style>
+<div class="noprint">{% call head(_('Ward Reports'), 'bar-chart-line') %}{% endcall %}</div>
+<form class="card border-0 shadow-sm mb-3 noprint" method="get" id="rf"><div class="card-body"><div class="row g-3 align-items-end">
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Report Type') }}</label><select class="form-select" name="type" id="type">
+  <option value="daily" {{ 'selected' if p.rtype=='daily' }}>{{ _('Daily') }}</option>
+  <option value="weekly" {{ 'selected' if p.rtype=='weekly' }}>{{ _('Weekly') }}</option>
+  <option value="monthly" {{ 'selected' if p.rtype=='monthly' }}>{{ _('Monthly') }}</option></select></div>
+ <div class="col-6 col-md-2" id="dateBox"><label class="form-label" id="dateLbl">{{ _('Date') }}</label><input type="date" class="form-control" name="date" value="{{ p.date }}"></div>
+ <div class="col-6 col-md-2" id="monthBox"><label class="form-label">{{ _('Month') }}</label><input type="month" class="form-control" name="month" value="{{ p.month }}"></div>
+ <div class="col-12 col-md-3"><label class="form-label">{{ _('Ward') }}</label><select class="form-select" name="ward_id"><option value="all">{{ _('All Wards') }}</option>
+  {% for w in p.wards %}<option value="{{ w.id }}" {{ 'selected' if p.ward_sel==w.id|string }}>{{ w.zone.name }} - {{ w.name }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Shift') }}</label><select class="form-select" name="shift" id="shift"><option value="" id="allShift">{{ _('All Shifts') }}</option>
+  {% for s in p.shifts %}<option value="{{ s }}" {{ 'selected' if p.shift==s }}>{{ _(s) }}</option>{% endfor %}</select></div>
+ <div class="col-6 col-md-2"><label class="form-label">{{ _('Work Type') }}</label><select class="form-select" name="work_type"><option value="">{{ _('All Work Types') }}</option>
+  {% for w in p.works %}<option value="{{ w }}" {{ 'selected' if p.wt==w }}>{{ _(w) }}</option>{% endfor %}</select></div>
+ <div class="col-12 d-flex gap-2 flex-wrap">
+  <button class="btn btn-primary"><i class="bi bi-search me-1"></i>{{ _('Show Report') }}</button>
+  {% if current_user.can('reports','export') %}<button class="btn btn-success" name="download" value="1"><i class="bi bi-file-earmark-excel me-1"></i>{{ _('Download Excel') }}</button>{% endif %}
+  <button type="button" class="btn btn-warning" onclick="window.print()" {{ '' if sections else 'disabled' }}><i class="bi bi-printer me-1"></i>{{ _('Print Report') }}</button></div>
+</div></div></form>
+{% if not p.wards or not p.shifts %}
+<div class="alert alert-danger noprint">{{ _('No ward / work type / shift has been assigned to you. Please contact the Super Admin.') }}</div>
+{% elif not shown %}
+<div class="alert alert-info noprint"><i class="bi bi-info-circle me-2"></i>{{ _('Choose the report type, ward and period above, then click Show Report.') }}</div>
+{% elif not sections %}
+<div class="alert alert-warning noprint">{{ _('No ward found for this selection.') }}</div>
+{% endif %}
+
+{% for sec in sections %}
+<div class="rep-sheet card border-0 shadow-sm mb-4"><div class="card-body">
+ <div class="phead">
+  <img src="{{ url_for('static', v=APP_VERSION, filename='logo.png') }}" alt="logo">
+  <div class="pt"><h1>{{ COMPANY }}</h1><h3>{{ p.title }}</h3></div>
+  <div class="pd">{{ _('Generated on') }}:<br><b>{{ now }}</b></div>
+ </div>
+ <table class="pinfo w-100"><tr>
+  <td><span>{{ _('Ward') }}</span><b>{{ sec.ward.name }}</b></td>
+  <td><span>{{ _('Zone') }}</span><b>{{ sec.zone }}</b></td>
+  <td><span>{{ _('Month') }}</span><b>{{ p.month_text }}</b></td>
+  <td><span>{{ _('Period') }}</span><b>{{ p.period_text }}</b></td>
+  <td><span>{{ _('Shift') }}</span><b>{{ _(p.shift) if p.shift else _('All Shifts') }}</b></td>
+  <td><span>{{ _('Work Type') }}</span><b>{{ _(p.wt) if p.wt else _('All Work Types') }}</b></td>
+ </tr></table>
+
+ {% if p.rtype == 'daily' %}
+ <div class="table-responsive"><table class="rg w-100"><tr><th>{{ _('S.No') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _("Father's Name") }}</th><th>{{ _('Designation') }}</th><th>{{ _('Shift') }}</th><th>{{ _('Work Type') }}</th><th>{{ _('Status') }}</th><th>{{ _('Location') }}</th><th>{{ _('In Time') }}</th><th>{{ _('Remark') }}</th></tr>
+ {% for r in sec.rows %}<tr><td>{{ loop.index }}</td><td>{{ r.e.code }}</td><td class="text-start">{{ r.e.name }}</td><td class="text-start">{{ r.e.father_name or '' }}</td><td class="text-start">{{ desig_text(r.e) }}</td><td>{{ _(r.shift) }}</td><td>{{ _(r.work) }}</td>
+  <td><span class="tag {{ r.status.split()[0] }}">{{ _(r.status) }}</span></td><td class="text-start">{{ r.loc }}</td><td>{{ r.time }}</td><td class="text-start">{{ r.rem }}</td></tr>
+ {% else %}<tr><td colspan="11">{{ _('No employees found for this ward.') }}</td></tr>{% endfor %}</table></div>
+ <p class="sumline mt-2"><b>{{ _('Total Employees') }}:</b> {{ sec.emp_count }}
+  {% for k,v in sec.summary.items() %} &nbsp;|&nbsp; <b>{{ _(k) }}:</b> {{ v }}{% endfor %}</p>
+ {% else %}
+ <div class="table-responsive"><table class="rg grid-r w-100"><thead><tr><th>{{ _('S.No') }}</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _("Father's Name") }}</th><th>{{ _('Designation') }}</th>
+  {% for d in p.days %}<th class="{{ 'sunh' if d.sun }}{{ ' holh' if d.hol }}" {% if d.hol %}title="{{ d.hol }}"{% endif %}>{{ d.num }}{% if p.rtype=='weekly' %}<br><small>{{ d.label }}</small>{% endif %}</th>{% endfor %}
+  <th>P</th><th>A</th><th>L</th><th>H</th><th>W</th><th>{{ _('Total Days') }}</th></tr></thead><tbody>
+ {% for r in sec.rows %}<tr><td>{{ loop.index }}</td><td>{{ r.e.code }}</td><td class="text-start">{{ r.e.name }}</td><td class="text-start">{{ r.e.father_name or '' }}</td><td class="text-start">{{ desig_text(r.e) }}</td>
+  {% for c in r.cells %}<td class="{{ 's-'+c if c }}">{{ c }}</td>{% endfor %}
+  <td><b>{{ r.cnt.P or '' }}</b></td><td>{{ r.cnt.A or '' }}</td><td>{{ r.cnt.L or '' }}</td><td>{{ r.cnt.H or '' }}</td><td>{{ r.cnt.W or '' }}</td><td><b>{{ r.days|num if r.days else '' }}</b></td></tr>
+ {% else %}<tr><td colspan="{{ 11 + p.days|length }}">{{ _('No employees found for this ward.') }}</td></tr>{% endfor %}</tbody>
+ {% if sec.rows %}<tfoot><tr><td colspan="5" class="text-start"><b>{{ _('Present per day') }}</b></td>{% for f in sec.foot %}<td><b>{{ f or '' }}</b></td>{% endfor %}<td colspan="6"></td></tr></tfoot>{% endif %}
+ </table></div>
+ <p class="sumline mt-2"><b>{{ _('Total Employees') }}:</b> {{ sec.emp_count }} &nbsp;|&nbsp; P = {{ _('Present') }}, A = {{ _('Absent') }}, L = {{ _('Leave') }}, H = {{ _('Half Day') }}, W = {{ _('Weekly Off') }}</p>
+ {% endif %}
+ <div class="sign"><div>{{ _('Prepared By') }}</div><div>{{ _('Verified By') }}</div><div>{{ _('Authorised Signatory') }}</div></div>
+</div></div>
+{% endfor %}
+<script>
+const ty=document.getElementById('type');
+function sync(){const v=ty.value;document.getElementById('monthBox').style.display=v==='monthly'?'':'none';
+ document.getElementById('dateBox').style.display=v==='monthly'?'none':'';
+ document.getElementById('dateLbl').textContent=v==='weekly'?{{ _('Any date of the week')|tojson }}:{{ _('Date')|tojson }};
+ const all=document.getElementById('allShift'),sh=document.getElementById('shift');
+ all.disabled=v!=='daily';all.hidden=v!=='daily';if(v!=='daily'&&sh.value===''&&sh.options.length>1)sh.selectedIndex=1;}
+ty.addEventListener('change',sync);sync();
+</script>
+{% endblock %}

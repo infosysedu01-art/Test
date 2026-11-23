@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Route') }}{% endblock %}
+{% block content %}
+{% call head(_('Edit Route') if v else _('Add Route'), 'truck') %}{% endcall %}
+<form method="post" class="card border-0 shadow-sm"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3">
+ <div class="col-md-3"><label class="form-label">{{ _('Route ID') }} *</label><input class="form-control text-uppercase" name="route_no" value="{{ v.route_no if v }}" required maxlength="20" placeholder="R-12" autocomplete="off"><div class="form-text">{{ _('Letters, numbers, space, hyphen or slash.') }}</div></div>
+ <div class="col-md-3"><label class="form-label">{{ _('Route Name / Area') }}</label><input class="form-control" name="route_name" value="{{ v.route_name or '' if v }}" maxlength="80" autocomplete="off"></div>
+ <div class="col-md-2"><label class="form-label">{{ _('Zone') }} *</label><select class="form-select" name="zone_id" id="zone" required><option value="">{{ _('-- Select Zone --') }}</option>{% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if v and v.zone_id==z.id }}>{{ z.name }}</option>{% endfor %}</select></div>
+ <div class="col-md-2"><label class="form-label">{{ _('Ward') }}</label><select class="form-select" name="ward_id" id="ward"><option value="">{{ _('-- All wards of the zone --') }}</option>{% for w in wards %}<option value="{{ w.id }}" data-zone="{{ w.zone_id }}" {{ 'selected' if v and v.ward_id==w.id }}>{{ w.name }}</option>{% endfor %}</select></div>
+ <div class="col-md-2"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="active"><option value="1">{{ _('Active') }}</option><option value="0" {{ 'selected' if v and not v.active }}>{{ _('Inactive') }}</option></select></div>
+</div>
+<div class="mt-4 d-flex gap-2"><button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>{{ _('Save') }}</button><a class="btn btn-light border" href="{{ url_for('routes') }}">{{ _('Cancel') }}</a></div></div></form>
+<script>
+const z=document.getElementById('zone'),w=document.getElementById('ward');
+function f(){[...w.options].forEach(o=>{if(!o.value)return;o.hidden=o.dataset.zone!==z.value;if(o.hidden&&o.selected)w.value='';});}
+z.addEventListener('change',()=>{w.value='';f();});f();
+</script>{% endblock %}

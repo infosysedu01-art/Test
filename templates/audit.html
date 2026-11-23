@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Audit Log') }}{% endblock %}
+{% block content %}
+{% call head(_('Audit Log'), 'clipboard-data') %}{% endcall %}
+<form class="card border-0 shadow-sm mb-3" method="get"><div class="card-body"><div class="row g-3 align-items-end">
+ <div class="col-md-3"><label class="form-label">{{ _('Username') }}</label><input class="form-control" name="user" value="{{ user }}"></div>
+ <div class="col-md-3"><label class="form-label">{{ _('Action') }}</label><select class="form-select" name="action"><option value="">{{ _('All') }}</option>{% for a in actions %}<option value="{{ a }}" {{ 'selected' if action==a }}>{{ a }}</option>{% endfor %}</select></div>
+ <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>{{ _('Show') }}</button></div></div></div></form>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover table-sm align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Date') }} (UTC)</th><th>{{ _('Username') }}</th><th>{{ _('Action') }}</th><th>{{ _('Details') }}</th><th>IP</th></tr></thead><tbody>
+{% for r in rows %}<tr><td>{{ offset + loop.index }}</td><td class="text-nowrap">{{ r.ts.strftime('%d-%m-%Y %H:%M:%S') }}</td><td>{{ r.username }}</td><td><span class="badge {{ 'text-bg-danger' if 'fail' in r.action or 'block' in r.action else 'text-bg-primary' }}">{{ r.action }}</span></td><td>{{ r.detail }}</td><td>{{ r.ip }}</td></tr>
+{% else %}<tr><td colspan="6" class="text-center text-muted py-4">{{ _('No records found.') }}</td></tr>{% endfor %}</tbody></table></div>
+ <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-top">
+  <div class="small text-muted">{{ _('Total') }}: {{ total }}</div>
+  {% if pages > 1 %}<nav><ul class="pagination pagination-sm mb-0">
+   <li class="page-item {{ 'disabled' if page==1 }}"><a class="page-link" href="{{ url_for('audit_log', page=page-1, **qs) }}">{{ _('Previous') }}</a></li>
+   <li class="page-item disabled"><span class="page-link">{{ page }} / {{ pages }}</span></li>
+   <li class="page-item {{ 'disabled' if page==pages }}"><a class="page-link" href="{{ url_for('audit_log', page=page+1, **qs) }}">{{ _('Next') }}</a></li></ul></nav>{% endif %}</div></div>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% macro stat(icon, color, num, label) %}
+<div class="col-6 col-md-4 col-xl-3"><div class="card border-0 shadow-sm h-100 stat-card border-start border-4 border-{{ color }}"><div class="card-body d-flex align-items-center gap-3 py-3">
+ <i class="bi bi-{{ icon }} fs-2 text-{{ color }}"></i><div><div class="fs-3 fw-bold lh-1">{{ num }}</div><div class="text-muted small mt-1">{{ label }}</div></div></div></div></div>
+{% endmacro %}
+{% macro head(title, icon='') %}
+<div class="page-head"><div><nav aria-label="breadcrumb" class="noprint"><ol class="breadcrumb small mb-1"><li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-decoration-none"><i class="bi bi-house-door"></i> {{ _('Dashboard') }}</a></li><li class="breadcrumb-item active" aria-current="page">{{ title }}</li></ol></nav>
+<h1 class="page-title">{% if icon %}<i class="bi bi-{{ icon }} me-2 text-warning"></i>{% endif %}{{ title }}</h1></div><div class="d-flex gap-2 flex-wrap noprint">{{ caller() if caller else '' }}</div></div>
+{% endmacro %}

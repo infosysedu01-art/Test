@@ -1,0 +1,72 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Employee') }}{% endblock %}
+{% block content %}
+{% call head(_('Edit Employee') if e else _('Add Employee'), 'person-plus') %}{% endcall %}
+<form method="post" class="card border-0 shadow-sm"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3">
+  <div class="col-md-3"><label class="form-label">{{ _('Employee Code (auto)') }}</label><input class="form-control" value="{{ code }}" readonly></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Name') }} *</label><input class="form-control" name="name" value="{{ e.name if e }}" required></div>
+  <div class="col-md-3"><label class="form-label">{{ _("Father's Name") }}</label><input class="form-control" name="father_name" value="{{ e.father_name or '' if e }}"></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Mobile') }}</label><input class="form-control" name="mobile" value="{{ e.mobile or '' if e }}" maxlength="15"></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Designation') }}</label><select class="form-select" name="designation_sel" id="desigSel"><option value="">{{ _('-- Select Designation --') }}</option>
+   {% for d in desig_list %}<option value="{{ d }}" {{ 'selected' if desig_sel==d }}>{{ _(d) }}</option>{% endfor %}{% if desig_sel=='__other__' %}<option value="__other__" selected>{{ _('Other') }}</option>{% endif %}</select></div>
+  <div class="col-md-3" id="desigOtherBox" style="display:none"><label class="form-label">{{ _('Other Designation') }}</label><input class="form-control" name="designation_other" id="desigOther" value="{{ desig_other }}" maxlength="60"></div>
+  {% if can_vehicles %}<div class="col-md-3" id="vehBox" style="display:none"><label class="form-label" for="vehIn"><i class="bi bi-truck me-1"></i>{{ _('Vehicle Number') }}</label>
+   <div class="combo" id="vehCombo" data-url="{{ url_for('lookup', kind='vehicle') }}" data-zone="{{ cur_veh.zone if cur_veh else '' }}" data-none="{{ _('No match found') }}" data-more="{{ _('Showing the first 30 - type more digits to narrow') }}">
+    <input type="hidden" name="vehicle_id" id="vehSel" value="{{ cur_veh.id if cur_veh else '' }}" disabled>
+    <input type="text" class="form-control combo-in" id="vehIn" autocomplete="off" role="combobox" aria-expanded="false" placeholder="{{ _('Type digits to search...') }}" value="{{ cur_veh.label if cur_veh else '' }}" disabled>
+    <button type="button" class="combo-x" tabindex="-1" title="{{ _('Clear') }}" aria-label="{{ _('Clear') }}">&times;</button>
+    <ul class="combo-list" role="listbox"></ul></div>
+   <div class="form-text">{{ _('Only for Driver and Helper.') }}</div></div>{% endif %}
+  {% if can_routes %}<div class="col-md-3" id="routeBox" style="display:none"><label class="form-label" for="routeIn"><i class="bi bi-signpost-split me-1"></i>{{ _('Route ID') }}</label>
+   <div class="combo" id="routeCombo" data-url="{{ url_for('lookup', kind='route') }}" data-zone="{{ cur_route.zone if cur_route else '' }}" data-none="{{ _('No match found') }}" data-more="{{ _('Showing the first 30 - type more digits to narrow') }}">
+    <input type="hidden" name="route_id" id="routeSel" value="{{ cur_route.id if cur_route else '' }}" disabled>
+    <input type="text" class="form-control combo-in" id="routeIn" autocomplete="off" role="combobox" aria-expanded="false" placeholder="{{ _('Type digits to search...') }}" value="{{ cur_route.label if cur_route else '' }}" disabled>
+    <button type="button" class="combo-x" tabindex="-1" title="{{ _('Clear') }}" aria-label="{{ _('Clear') }}">&times;</button>
+    <ul class="combo-list" role="listbox"></ul></div>
+   <div class="form-text">{{ _('Only for Driver, Helper and Trolleyman.') }}</div></div>{% endif %}
+  {% if can_trackers %}<div class="col-md-3" id="trackBox" style="display:none"><label class="form-label" for="trackIn"><i class="bi bi-broadcast me-1"></i>{{ _('Tracker ID') }}</label>
+   <div class="combo" id="trackCombo" data-url="{{ url_for('lookup', kind='tracker') }}" data-zone="{{ cur_trk.zone if cur_trk else '' }}" data-none="{{ _('No match found') }}" data-more="{{ _('Showing the first 30 - type more digits to narrow') }}">
+    <input type="hidden" name="tracker_id" id="trackSel" value="{{ cur_trk.id if cur_trk else '' }}" disabled>
+    <input type="text" class="form-control combo-in" id="trackIn" autocomplete="off" role="combobox" aria-expanded="false" placeholder="{{ _('Type digits to search...') }}" value="{{ cur_trk.label if cur_trk else '' }}" disabled>
+    <button type="button" class="combo-x" tabindex="-1" title="{{ _('Clear') }}" aria-label="{{ _('Clear') }}">&times;</button>
+    <ul class="combo-list" role="listbox"></ul></div>
+   <div class="form-text">{{ _('Only for Trolleyman.') }}</div></div>{% endif %}
+  <div class="col-md-3"><label class="form-label">{{ _('Zone') }} *</label><select class="form-select" name="zone_id" id="zone" required><option value="">{{ _('-- Select Zone --') }}</option>
+   {% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if e and e.zone_id==z.id }}>{{ z.name }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Ward') }} *</label><select class="form-select" name="ward_id" id="ward" required><option value="">{{ _('-- Select Ward --') }}</option>
+   {% for w in wards %}<option value="{{ w.id }}" data-zone="{{ w.zone_id }}" {{ 'selected' if e and e.ward_id==w.id }}>{{ w.name }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Default Shift') }}</label><select class="form-select" name="default_shift">{% for s in SHIFTS %}<option value="{{ s }}" {{ 'selected' if e and e.default_shift==s }}>{{ _(s) }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Default Work') }}</label><select class="form-select" name="default_work">{% for w in works %}<option value="{{ w }}" {{ 'selected' if e and e.default_work==w }}>{{ _(w) }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Joining Date') }}</label><input type="date" class="form-control" name="joining_date" value="{{ e.joining_date or '' if e }}"></div>
+  <div class="col-md-3"><label class="form-label">{{ _('Status') }}</label><select class="form-select" name="active"><option value="1">{{ _('Active') }}</option><option value="0" {{ 'selected' if e and not e.active }}>{{ _('Inactive') }}</option></select></div>
+ </div>
+ <div class="mt-4 d-flex gap-2"><button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>{{ _('Save') }}</button><a class="btn btn-light border" href="{{ url_for('employees') }}">{{ _('Cancel') }}</a></div></div></form>
+<script src="{{ url_for('static', v=APP_VERSION, filename='combo.js') }}"></script>
+<script>
+const z=document.getElementById('zone'),w=document.getElementById('ward'),ds=document.getElementById('desigSel'),dob=document.getElementById('desigOtherBox'),
+ dot=document.getElementById('desigOther'),vb=document.getElementById('vehBox'),rb=document.getElementById('routeBox'),tb=document.getElementById('trackBox');
+const vc=document.getElementById('vehCombo'),rc=document.getElementById('routeCombo'),tc=document.getElementById('trackCombo');
+const COMBOS=[vc,rc,tc].filter(Boolean);
+/* Vehicle / Route / Tracker: search boxes (see combo.js); they search inside the chosen zone */
+COMBOS.forEach(c=>{c._zone=()=>z.value;Combo.init(c);});
+/* the ward list is rebuilt (not just hidden): a hidden <option> is ignored by many browsers */
+function keep(sel){if(!sel)return null;const all=[...sel.options].map(o=>({v:o.value,t:o.text,z:o.dataset.zone||''}));return {sel,all};}
+const W=keep(w);
+function rebuild(c,zone){if(!c)return;const cur=c.sel.value;c.sel.innerHTML='';
+ c.all.forEach(o=>{if(o.v&&zone&&o.z!==zone)return;const op=new Option(o.t,o.v,false,false);if(o.z)op.dataset.zone=o.z;c.sel.add(op);});
+ c.sel.value=[...c.sel.options].some(o=>o.value===cur)?cur:'';}
+function f(){rebuild(W,z.value);
+ COMBOS.forEach(c=>{const cz=c.getAttribute('data-zone');if(z.value&&cz&&cz!==z.value)c.comboClear();});}   // a choice from another zone is dropped
+function dkey(){const v=(ds.value==='__other__'?dot.value:ds.value).trim().toLowerCase().replace(/\s+/g,' ');return (v==='trollyman'||v==='trolley man')?'trolleyman':v;}
+function show(box,c,on){if(!box)return;box.style.display=on?'':'none';c.comboSetEnabled(on);}
+function syncDesig(){const other=ds.value==='__other__';dob.style.display=other?'':'none';dot.required=other;
+ const k=dkey();
+ show(vb,vc,k==='driver'||k==='helper');
+ show(rb,rc,k==='driver'||k==='helper'||k==='trolleyman');
+ show(tb,tc,k==='trolleyman');}
+/* choosing a vehicle / route / tracker first fills the zone automatically */
+document.addEventListener('combo:pick',e=>{const zn=e.detail.zone;if(zn&&!z.value){z.value=zn;f();}});
+z.addEventListener('change',f);
+ds.addEventListener('change',syncDesig);dot.addEventListener('input',syncDesig);
+/* edit form: restore the saved ward after the first rebuild */
+(function(){const sv=w.value;f();if(sv)w.value=sv;syncDesig();})();
+</script>{% endblock %}

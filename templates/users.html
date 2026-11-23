@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Users & Access') }}{% endblock %}
+{% block content %}
+{% call head(_('Users & Access'), 'shield-lock') %}<a class="btn btn-success" href="{{ url_for('user_add') }}"><i class="bi bi-person-plus me-1"></i>{{ _('Create User') }}</a>{% endcall %}
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Username') }}</th><th>{{ _('Name') }}</th><th>{{ _('Role') }}</th><th>{{ _('Status') }}</th><th>{{ _('Projects') }}</th><th>{{ _('Zone') }}</th><th>{{ _('Wards') }}</th><th>{{ _('Work Types') }}</th><th>{{ _('Shifts') }}</th><th>{{ _('Back-date Limit') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+{% for u in rows %}<tr><td>{{ loop.index }}</td><td class="fw-semibold">{{ u.username }}</td><td>{{ u.full_name }}</td><td><span class="badge text-bg-{{ 'warning' if u.is_super else 'primary' }}">{{ _('Super Admin') if u.is_super else _('User') }}</span></td>
+ <td><span class="badge text-bg-{{ 'success' if u.is_active_user else 'secondary' }}">{{ _('Active') if u.is_active_user else _('Disabled') }}</span></td>
+ <td>{% if u.is_super %}<span class="badge chip">{{ _('All Projects') }}</span>{% else %}{% for l in u.project_links %}<span class="badge chip">{{ project_names.get(l.project_id, '?') }}</span> {% else %}<span class="text-danger small">{{ _('None') }}</span>{% endfor %}{% endif %}</td><td>{{ u.scope_text('zones') }}</td><td>{{ u.scope_text('wards') }}</td><td>{% for w in u.scope_text('works').split(', ') %}<span class="badge chip">{{ w }}</span> {% endfor %}</td><td>{{ u.scope_text('shifts') }}</td>
+ <td>{{ _('Unlimited') if u.is_super or u.backdate_days is none else (u.backdate_days|string ~ ' ' ~ _('days')) }}</td><td style="min-width:200px">
+ <a class="btn btn-sm btn-outline-primary mb-1" href="{{ url_for('user_edit', id=u.id) }}"><i class="bi bi-pencil"></i> {{ _('Edit / Access') }}</a>
+ <a class="btn btn-sm btn-outline-warning mb-1" href="{{ url_for('user_reset_password', id=u.id) }}"><i class="bi bi-key"></i> {{ _('Reset Password') }}</a>
+ {% if u.id != current_user.id %}<form method="post" action="{{ url_for('user_delete', id=u.id) }}" class="d-inline" data-confirm="{{ _('Delete this user?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>{% endif %}
+</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}

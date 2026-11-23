@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="{{ lang }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ _('Login') }} | {{ COMPANY }}</title>
+<link rel="icon" href="{{ url_for('static', v=APP_VERSION, filename='logo.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', v=APP_VERSION, filename='vendor/bootstrap/bootstrap.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', v=APP_VERSION, filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', v=APP_VERSION, filename='app.css') }}">
+<meta name="theme-color" content="#1f3a68">
+<style>
+.login-card{border-top:5px solid #f7941d}.hero img{height:128px}.feat i{color:#2e8b57}
+/* page: fixed position (the card never jumps when the password step opens), soft background, roomy touch-size fields */
+.auth-wrap{flex:1 1 auto;display:flex;align-items:flex-start;justify-content:center;padding:clamp(8px,4vh,48px) 12px 20px;background:linear-gradient(180deg,#f3f6fc 0,#fff 70%)}
+.auth-card{width:100%;max-width:980px;margin:0;background:#fff;border:1px solid #e1e8f3;border-radius:1.25rem;overflow:hidden;box-shadow:0 18px 48px rgba(31,58,104,.13)}
+.auth-hero{background:linear-gradient(155deg,#f2f6fd 0%,#fff4e4 100%);border-right:1px solid #e8edf6}
+@media(min-width:992px){.auth-hero,.auth-form{min-height:540px}}
+.auth-form .form-label{font-weight:600;color:#1f3a68;font-size:.9rem}
+.auth-form .input-group-text{color:#1f3a68}
+.auth-form .btn-primary{font-size:1.02rem}
+#step2.auth-in{animation:authIn .28s ease both}
+@keyframes authIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media(max-width:575.98px){.auth-wrap{padding-top:6px}.auth-form{padding:1.25rem!important}}
+@media(max-height:560px) and (max-width:991.98px){.auth-wrap{padding-top:4px}.auth-mobile-logo img{display:none}.auth-form{padding:1rem 1.25rem!important}.auth-sub{margin-bottom:.6rem!important}}
+@media(max-width:360px){.auth-wrap{padding-left:8px;padding-right:8px}.auth-form{padding:1rem!important}.auth-form .input-group-text{padding-left:.55rem;padding-right:.55rem}.auth-form #chk,.auth-form #eye{padding-left:.6rem;padding-right:.6rem}}
+@media(prefers-reduced-motion:reduce){ #step2.auth-in{animation:none}}
+</style></head>
+<body class="d-flex flex-column min-vh-100">
+{% include '_loader.html' %}
+<div class="app-strip"></div>
+<div class="d-flex justify-content-end py-2 px-3"><div class="btn-group btn-group-sm"><a class="btn btn-outline-primary {{ 'active' if lang=='en' }}" href="{{ url_for('set_lang', code='en') }}">English</a><a class="btn btn-outline-primary {{ 'active' if lang=='hi' }}" href="{{ url_for('set_lang', code='hi') }}">हिन्दी</a></div></div>
+<div class="auth-wrap"><div class="row g-0 auth-card">
+ <div class="col-lg-6 p-4 p-lg-4 hero auth-hero d-none d-lg-flex flex-column justify-content-center">
+  <img src="{{ url_for('static', v=APP_VERSION, filename='logo.png') }}" alt="Group of Lions" class="mb-3 align-self-start">
+  <h1 class="h2 fw-bold text-primary mb-1" id="coName">{{ COMPANY }}</h1>
+  <p class="text-muted mb-4">{{ _('Ward Wise Attendance Management System') }}</p>
+  <ul class="list-unstyled feat mb-0">
+   {% for t in [_('Excel-style monthly attendance sheet'), _('Day / Night shifts with Door to Door, Commercial and Sweeping tracking'), _('Zone and ward wise employee management'), _('Role based access and downloadable reports')] %}
+   <li class="d-flex gap-2 mb-2"><i class="bi bi-check-circle-fill mt-1"></i><span>{{ t }}</span></li>{% endfor %}
+  </ul></div>
+ <div class="col-lg-6 col-12 p-4 p-lg-4 login-card auth-form bg-white">
+  <div class="d-lg-none text-center mb-3 auth-mobile-logo"><img src="{{ url_for('static', v=APP_VERSION, filename='logo.png') }}" height="72" width="70" alt="logo"><div class="fw-bold text-primary fs-5" id="coName2">{{ COMPANY }}</div></div>
+  <h2 class="h3 fw-bold text-primary mb-1">{{ _('Welcome back') }}</h2>
+  <p class="text-muted mb-4 auth-sub">{{ _('Sign in to your account to continue') }}</p>
+  {% with msgs = get_flashed_messages(with_categories=true) %}{% for c,m in msgs %}<div class="alert alert-danger py-2" role="alert"><i class="bi bi-exclamation-triangle me-2"></i>{{ m }}</div>{% endfor %}{% endwith %}
+  <form method="post" id="lf" data-loader-msg="{{ _('Signing in...') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="form-label" for="u">{{ _('Username') }}</label>
+    <div class="input-group input-group-lg mb-1"><span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+     <input type="text" class="form-control" id="u" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" value="{{ uname }}" placeholder="{{ _('Enter your username') }}">
+     <button class="btn btn-outline-primary" type="button" id="chk"><span class="d-none d-sm-inline">{{ _('Next') }} </span><i class="bi bi-arrow-right"></i></button></div>
+    <div class="small mb-3" id="uMsg" style="min-height:1.3em"></div>
+    <div id="step2" class="d-none">
+     <label class="form-label" for="proj">{{ _('Project') }}</label>
+     <div class="input-group input-group-lg mb-3"><span class="input-group-text bg-white"><i class="bi bi-diagram-3"></i></span>
+      <select class="form-select" id="proj" name="project_id"></select></div>
+     <label class="form-label" for="p">{{ _('Password') }}</label>
+     <div class="input-group input-group-lg mb-1"><span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
+      <input type="password" class="form-control" id="p" name="password" autocomplete="current-password" placeholder="{{ _('Enter your password') }}">
+      <button class="btn btn-outline-secondary" type="button" id="eye" title="{{ _('Show / hide password') }}"><i class="bi bi-eye"></i></button></div>
+     <div class="text-warning small mb-3" id="caps" style="display:none"><i class="bi bi-exclamation-triangle"></i> {{ _('Caps Lock is on') }}</div>
+     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 my-3 small">
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="remember" value="1" id="rm"><label class="form-check-label" for="rm">{{ _('Keep me signed in') }}</label></div>
+      <span class="text-muted">{{ _('Forgot password? Contact your administrator.') }}</span></div>
+     <button class="btn btn-primary btn-lg w-100 fw-semibold" id="go"><span class="spinner-border spinner-border-sm me-2 d-none" id="spin"></span><span id="lbl">{{ _('Login') }}</span></button>
+    </div>
+   </form>
+  <p class="text-center text-muted small mt-4 mb-0"><i class="bi bi-shield-lock me-1"></i>{{ _('Authorised users only. All activity is recorded.') }}</p>
+ </div></div></div>
+<footer class="text-center text-muted small py-2 border-top">&copy; {{ today.year }} {{ COMPANY }} &middot; {{ _('All rights reserved') }} &middot; v{{ APP_VERSION }} &middot; Bootstrap 5.2.3</footer>
+<script src="{{ url_for('static', v=APP_VERSION, filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', v=APP_VERSION, filename='loader.js') }}"></script>
+<script>
+const T={checking:{{ _('Checking...')|tojson }},nouser:{{ _('Username not found. Please check it or contact the administrator.')|tojson }},noproj:{{ _('No project is assigned to this user. Please contact the administrator.')|tojson }},err:{{ _('Could not check the username. Please try again.')|tojson }},login:{{ _('Login')|tojson }},base:{{ COMPANY|tojson }}};
+const $=id=>document.getElementById(id),u=$('u'),p=$('p'),proj=$('proj'),step2=$('step2'),msg=$('uMsg'),tok=document.querySelector('input[name=_csrf]').value;
+let last=null,want={{ (sel_pid or 0)|tojson }},COS={};
+function company(){const c=COS[proj.value]||T.base;$('coName').textContent=c;const c2=$('coName2');if(c2)c2.textContent=c;document.title=T.login+' | '+c;}
+function hide(){step2.classList.add('d-none');p.required=false;proj.innerHTML='';COS={};company();}
+async function check(){
+ const name=u.value.trim();
+ if(!name){last=null;msg.textContent='';hide();return;}
+ if(name===last)return; last=name; msg.className='small mb-3 text-muted'; msg.textContent=T.checking;
+ try{
+  const r=await fetch({{ url_for('login_check')|tojson }},{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':tok},body:'username='+encodeURIComponent(name)});
+  const d=await r.json();
+  if(u.value.trim()!==name)return;
+  if(!d.found){msg.className='small mb-3 text-danger';msg.textContent=T.nouser;hide();return;}
+  if(!d.projects.length){msg.className='small mb-3 text-danger';msg.textContent=T.noproj;hide();return;}
+  proj.innerHTML='';COS={};
+  d.projects.forEach(x=>{COS[x.id]=x.company;const o=document.createElement('option');o.value=x.id;o.textContent=x.company;if(x.id===want)o.selected=true;proj.appendChild(o);});
+  msg.textContent='';
+  step2.classList.remove('d-none');step2.classList.remove('auth-in');void step2.offsetWidth;step2.classList.add('auth-in');p.required=true;company();p.focus();
+ }catch(e){last=null;msg.className='small mb-3 text-danger';msg.textContent=T.err;}
+}
+u.addEventListener('keydown',e=>{if(e.key==='Enter'&&step2.classList.contains('d-none')){e.preventDefault();check();}});
+u.addEventListener('blur',check);$('chk').addEventListener('click',check);
+u.addEventListener('input',()=>{if(u.value.trim()!==last){last=null;if(!step2.classList.contains('d-none'))hide();msg.textContent='';}});
+proj.addEventListener('change',company);
+$('eye').addEventListener('click',e=>{p.type=p.type==='password'?'text':'password';e.currentTarget.firstElementChild.className='bi bi-'+(p.type==='password'?'eye':'eye-slash');p.focus();});
+p.addEventListener('keyup',e=>{$('caps').style.display=e.getModifierState&&e.getModifierState('CapsLock')?'block':'none';});
+window.addEventListener('pageshow',e=>{if(e.persisted){$('go').disabled=false;$('spin').classList.add('d-none');$('lbl').textContent=T.login;}});
+$('lf').addEventListener('submit',ev=>{if(step2.classList.contains('d-none')){ev.preventDefault();check();return;}$('go').disabled=true;$('spin').classList.remove('d-none');$('lbl').textContent={{ _('Signing in...')|tojson }};});
+if(u.value.trim())check();else if(!(window.matchMedia&&matchMedia('(pointer:coarse)').matches))u.focus();   // no keyboard pop-up on phones
+</script></body></html>

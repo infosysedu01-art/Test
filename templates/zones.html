@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Zone') }}{% endblock %}
+{% block content %}
+{% call head(_('Zone Master'), 'map') %}{% endcall %}
+{% if (edit and current_user.can('zones','edit')) or (not edit and current_user.can('zones','add')) %}
+<form method="post" class="card border-0 shadow-sm mb-4"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="card-body"><div class="row g-3 align-items-end">
+ {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+ <div class="col-md-5"><label class="form-label">{{ _('Zone Name') }}</label><input class="form-control" name="name" value="{{ edit.name if edit }}" required></div>
+ <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-{{ 'check2' if edit else 'plus-lg' }} me-1"></i>{{ _('Update') if edit else _('Add Zone') }}</button>
+ {% if edit %}<a class="btn btn-light border" href="{{ url_for('zones') }}">{{ _('Cancel') }}</a>{% endif %}</div></div></div></form>{% endif %}
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Zone') }}</th><th>{{ _('Wards') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+{% for z in zones %}<tr><td>{{ loop.index }}</td><td class="fw-semibold">{{ z.name }}</td><td><span class="badge bg-white text-dark border">{{ counts.get(z.id, 0) }}</span></td><td class="text-nowrap">
+ {% if current_user.can('zones','edit') %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('zones', edit=z.id) }}"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>{% endif %}
+ {% if current_user.can('zones','delete') %}<form method="post" action="{{ url_for('zone_delete', id=z.id) }}" class="d-inline" data-confirm="{{ _('Delete this zone?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button></form>{% endif %}
+</td></tr>{% else %}<tr><td colspan="4" class="text-center text-muted py-4">{{ _('No records found.') }}</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}

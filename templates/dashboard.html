@@ -1,0 +1,51 @@
+{% extends 'base.html' %}{% block title %}{{ _('Dashboard') }}{% endblock %}
+{% macro tile(icon, grad, num, label) %}
+<div class="col"><div class="sq sq-tile t-{{ grad }}"><div class="ti"><i class="bi bi-{{ icon }}"></i></div>
+ <div><div class="tn">{{ num }}</div><div class="tl">{{ label }}</div></div></div></div>
+{% endmacro %}
+{% block content %}
+<div class="dash-banner px-3 py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+ <div><div class="fw-bold text-primary fs-5 lh-1">{{ _('Welcome') }}, {{ current_user.full_name }}</div>
+  <div class="text-muted small mt-1"><i class="bi bi-calendar3 me-1"></i>{{ today.strftime('%d-%m-%Y') }} &middot; {{ dow(today) }} &middot; {{ _("Today's Attendance") }}</div></div>
+ <div class="d-flex gap-2 flex-wrap">
+  {% if current_user.can('attendance') %}<a class="btn btn-sm btn-success" href="{{ url_for('attendance') }}"><i class="bi bi-calendar2-check me-1"></i>{{ _('Attendance Sheet') }}</a>{% endif %}
+  {% if current_user.can('reports') %}<a class="btn btn-sm btn-primary" href="{{ url_for('ward_reports') }}"><i class="bi bi-bar-chart-line me-1"></i>{{ _('Ward Reports') }}</a>{% endif %}
+  {% if current_user.can('employees') %}<a class="btn btn-sm btn-warning" href="{{ url_for('employees') }}"><i class="bi bi-people me-1"></i>{{ _('Employees') }}</a>{% endif %}
+ </div></div>
+
+<div class="row row-cols-2 row-cols-sm-4 row-cols-xl-8 g-2 mb-3">
+ {{ tile('people-fill', 'primary', stats.employees, _('Active Employees')) }}
+ {{ tile('geo-alt-fill', 'info', stats.wards, _('Your Wards')) }}
+ {{ tile('person-check-fill', 'success', stats.present, _('Present')) }}
+ {{ tile('person-x-fill', 'danger', stats.absent, _('Absent')) }}
+ {{ tile('person-dash-fill', 'secondary', stats.leave, _('Leave / Half Day')) }}
+ {{ tile('question-circle-fill', 'purple', stats.not_marked, _('Not Marked')) }}
+ {{ tile('sun-fill', 'warning', stats.day, _('Day Shift Present')) }}
+ {{ tile('moon-stars-fill', 'primary', stats.night, _('Night Shift Present')) }}
+</div>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-2">
+ <div class="col"><div class="sq sq-card"><h3><i class="bi bi-pie-chart-fill"></i>{{ _("Today's Attendance") }}</h3>
+  <div class="body"><div class="donut"><svg viewBox="0 0 36 36" id="donutSvg"><circle cx="18" cy="18" r="15.9155" fill="none" stroke="#eef1f6" stroke-width="4"></circle></svg>
+   <div class="mid"><b>{{ stats.employees }}</b><small>{{ _('Active Employees') }}</small></div></div>
+   <div class="dlegend"><span><i style="background:#1e8e5a"></i>{{ _('Present') }} {{ stats.present }}</span><span><i style="background:#c0392b"></i>{{ _('Absent') }} {{ stats.absent }}</span><span><i style="background:#8d9bb8"></i>{{ _('Leave') }} {{ stats.leave }}</span><span><i style="background:#b878d3"></i>{{ _('Not Marked') }} {{ stats.not_marked }}</span></div></div></div></div>
+ <div class="col"><div class="sq sq-card dash-work"><h3><i class="bi bi-briefcase-fill"></i>{{ _('Who is working on what today') }}</h3>
+  <div class="body">{% set tot = (work.values()|sum) or 1 %}{% for w,c in work.items() %}
+   <div class="mb-2"><div class="d-flex justify-content-between small fw-semibold mb-1" style="font-size:.72rem"><span>{{ _(w) }}</span><span class="text-primary">{{ c }}</span></div>
+    <div class="progress"><div class="progress-bar {{ ['bg-primary','bg-warning','bg-success'][loop.index0 % 3] }}" style="width:{{ (c*100/tot)|round|int }}%"></div></div></div>
+   {% else %}<div class="text-muted small text-center">{{ _('No records found.') }}</div>{% endfor %}</div></div></div>
+ <div class="col"><div class="sq sq-card"><h3><i class="bi bi-bar-chart-fill"></i>{{ _('Last 7 Days (Present)') }}</h3>
+  <div class="body" style="justify-content:stretch">{% set mx = (trend|map(attribute='n')|max) or 1 %}<div class="bars">
+   {% for t in trend %}<div class="b {{ 'sun' if t.sun }} {{ 'today' if t.today }}"><em>{{ t.n }}</em><div class="bar" style="height:{{ [(t.n*78/mx)|round|int, 3]|max }}%"></div><span>{{ t.day }}<br>{{ t.date }}</span></div>{% endfor %}</div></div></div></div>
+ <div class="col"><div class="sq sq-card"><h3><i class="bi bi-stars"></i>{{ _('Upcoming Holidays') }}</h3>
+  <div class="body" style="justify-content:flex-start">{% if upcoming %}<ul class="hl">{% for h in upcoming %}<li><div class="dt">{{ h.hdate.strftime('%d') }}<small>{{ h.hdate.strftime('%m-%Y') }}</small></div><div class="nm">{{ h.name }}<div class="small fw-normal text-muted">{{ dow(h.hdate) }}</div></div></li>{% endfor %}</ul>
+   {% else %}<div class="text-muted small text-center my-auto">{{ _('No upcoming holidays.') }}</div>{% endif %}</div></div></div>
+</div>
+<script>
+(function(){const v=[{{ stats.present }},{{ stats.absent }},{{ stats.leave }},{{ stats.not_marked }}],c=['#1e8e5a','#c0392b','#8d9bb8','#b878d3'];
+ const tot=v.reduce((a,b)=>a+b,0);if(!tot)return;const svg=document.getElementById('donutSvg');let off=0;
+ v.forEach((n,i)=>{if(!n)return;const p=n*100/tot;const el=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  el.setAttribute('cx',18);el.setAttribute('cy',18);el.setAttribute('r',15.9155);el.setAttribute('fill','none');el.setAttribute('stroke',c[i]);el.setAttribute('stroke-width',4);
+  el.setAttribute('stroke-dasharray',p+' '+(100-p));el.setAttribute('stroke-dashoffset',-off);svg.appendChild(el);off+=p;});})();
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}{% from '_macros.html' import head %}{% block title %}{{ _('Route') }}{% endblock %}
+{% macro crew_table(title, icon, list, show_remove) %}
+<div class="card border-0 shadow-sm mb-3"><div class="card-header bg-white fw-bold text-primary"><i class="bi bi-{{ icon }} me-2 text-warning"></i>{{ title }} <span class="badge text-bg-primary ms-1">{{ list|length }}</span></div>
+ <div class="table-responsive"><table class="table table-app table-hover align-middle mb-0"><thead><tr><th>#</th><th>{{ _('Code') }}</th><th>{{ _('Name') }}</th><th>{{ _("Father's Name") }}</th><th>{{ _('Mobile') }}</th><th>{{ _('Ward') }}</th><th>{{ _('Vehicle Number') }}</th><th>{{ _('Shift') }}</th><th>{{ _('Status') }}</th><th>{{ _('Action') }}</th></tr></thead><tbody>
+ {% for e in list %}<tr><td>{{ loop.index }}</td><td>{{ e.code }}</td><td class="fw-semibold">{% if current_user.can('employees','view') %}<a class="text-decoration-none" href="{{ url_for('employee_view', id=e.id) }}">{{ e.name }}</a>{% else %}{{ e.name }}{% endif %}</td><td>{{ e.father_name or '' }}</td><td>{{ e.mobile or '' }}</td><td>{{ e.ward.name }}</td><td>{% if e.vehicle %}<span class="vbadge">{{ e.vehicle.vehicle_no }}</span>{% endif %}</td><td>{{ _(e.default_shift) }}</td>
+  <td><span class="badge text-bg-{{ 'success' if e.active else 'secondary' }}">{{ _('Active') if e.active else _('Inactive') }}</span></td>
+  <td>{% if show_remove %}<form method="post" action="{{ url_for('route_unassign', id=v.id, emp_id=e.id) }}" class="d-inline" data-confirm="{{ _('Remove this employee from the route?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle"></i> {{ _('Remove') }}</button></form>{% endif %}</td></tr>
+ {% else %}<tr><td colspan="10" class="text-center text-muted py-3">{{ _('Nobody assigned yet.') }}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endmacro %}
+{% block content %}
+{% call head(v.route_no, 'truck') %}
+ <a class="btn btn-light border" href="{{ url_for('routes') }}"><i class="bi bi-arrow-left me-1"></i>{{ _('Back to Routes') }}</a>
+ {% if current_user.can('routes','edit') %}<a class="btn btn-warning" href="{{ url_for('route_edit', id=v.id) }}"><i class="bi bi-pencil me-1"></i>{{ _('Edit') }}</a>{% endif %}
+ {% if current_user.can('routes','delete') %}<form method="post" action="{{ url_for('route_delete', id=v.id) }}" class="d-inline" data-confirm="{{ _('Delete this route?') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>{{ _('Delete') }}</button></form>{% endif %}
+ <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>{{ _('Print') }}</button>
+{% endcall %}
+<div class="card border-0 shadow-sm mb-3"><div class="card-body"><div class="kv">
+ <div><span>{{ _('Route ID') }}</span><b>{{ v.route_no }}</b></div>
+ <div><span>{{ _('Route Name / Area') }}</span><b>{{ v.route_name or '-' }}</b></div>
+ <div><span>{{ _('Zone') }}</span><b>{{ v.zone.name }}</b></div>
+ <div><span>{{ _('Ward') }}</span><b>{{ v.ward.name if v.ward else _('All wards of the zone') }}</b></div>
+ <div><span>{{ _('Status') }}</span><b>{{ _('Active') if v.active else _('Inactive') }}</b></div>
+ <div><span>{{ _('Crew on this route') }}</span><b>{{ total_crew }}</b></div>
+</div></div></div>
+{{ crew_table(_('Driver'), 'person-badge', crew.driver, current_user.can('routes','edit')) }}
+{{ crew_table(_('Helper'), 'people', crew.helper, current_user.can('routes','edit')) }}
+{% if crew.other %}{{ crew_table(_('Others'), 'person', crew.other, current_user.can('routes','edit')) }}{% endif %}
+{% if current_user.can('routes','edit') %}
+<div class="card border-0 shadow-sm noprint"><div class="card-body">
+ <h2 class="h6 fw-bold text-primary"><i class="bi bi-person-plus me-2 text-warning"></i>{{ _('Assign a Driver / Helper to this route') }}</h2>
+ <form method="post" action="{{ url_for('route_assign', id=v.id) }}" class="row g-2 align-items-end"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="col-md-7"><select class="form-select" name="employee_id" required><option value="">{{ _('-- Select employee --') }}</option>
+   {% for e in eligible %}<option value="{{ e.id }}">{{ e.name }} ({{ e.code }}) - {{ _(e.designation|title) }}{% if e.route %} &middot; {{ _('now on') }} {{ e.route.route_no }}{% endif %}</option>{% endfor %}</select>
+   <div class="form-text">{{ _('Only active Drivers and Helpers of the same zone are listed. Choosing someone who is on another route moves him here.') }}</div></div>
+  <div class="col-auto"><button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>{{ _('Assign') }}</button></div></form></div></div>
+{% endif %}
+{% endblock %}
